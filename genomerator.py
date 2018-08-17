@@ -203,9 +203,9 @@ class GenomeFeature (object):
 	
 	def same_as (self, other):
 		'''
-		this feature has the same start and end positions as the other
+		this feature has the same start and end positions and strand as the other
 		'''
-		return self.left == other.left and self.right == other.right
+		return self.left == other.left and self.right == other.right and self.is_reverse == other.is_reverse
 	
 	def intersection (self, other):
 		'''
