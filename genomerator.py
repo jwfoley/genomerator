@@ -1,13 +1,13 @@
-import collections
-
 # look at scipy.integrate.ode
 # make a wiggle reader
-# make a FASTA writer
+# make a FASTA writer? I guess it could add N where no sequence is given
 # this also suggests 2bit should be supported
 # make VCF writer
-# make GFF writers
-# make GTF writers (clever way to export the exons?)
+# make GFF writer
+# make GTF writer
 # still looking for sequential-read bigBed/bigWig module
+
+import collections
 
 
 class GenomeFeature (object):
