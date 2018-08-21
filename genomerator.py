@@ -2,9 +2,10 @@ import collections
 
 # look at scipy.integrate.ode
 # make a wiggle reader
-# make a FASTA reader: optionally set span (None for just whatever the line length), overlap (if span > 1, should features overlap or just be contiguous, and if overlap how much?), behavior at end of each reference (if span > 1, return a final truncated feature?)
-# obviously this also means there should be a FASTA writer (just set line length?)
+# make a FASTA writer
 # this also suggests 2bit should be supported
+# make GFF readers/writers
+# make GTF readers/writers (clever way to export the exons?)
 # still looking for sequential-read bigBed/bigWig module
 
 
@@ -68,15 +69,15 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_bed (cls, bed_line, references):
+	def from_bed (cls, line, references):
 		'''
 		make a GenomeFeature from a line of a BED file
 		you must give a list of reference names, in order, so it can find the index
 		returns the split but unparsed fields in self.data
 		consider making data an ordered dictionary for easy un-parsing
-		but then also consider allowing user to specific the names of extra nonstandard fields (this will imply the number of extra fields, and then when parsing the file we will know the number of standard fields after splitting and subtracting that)
+		but then also consider allowing user to specify the names of extra nonstandard fields (this will imply the number of extra fields, and then when parsing the file we will know the number of standard fields after splitting and subtracting that)
 		''' 
-		fields = bed_line.rstrip().split()
+		fields = line.rstrip().split()
 		return cls(
 			reference_id =  references.index(fields[0]),
 			left_pos =      int(fields[1]) + 1,
@@ -85,6 +86,37 @@ class GenomeFeature (object):
 			data =          fields
 		)
 	
+	@classmethod
+	def from_vcf (cls, line, references):
+		'''
+		make a GenomeFeature from a line of a VCF file
+		you must give a list of reference names, in order, so it can find the index
+		returns the split but unparsed fields in self.data
+		consider making data an ordered dictionary for easy un-parsing
+		'''
+		fields = line.rstrip().split('\t')
+		return cls(
+			reference_id =  references.index(fields[0]),
+			left_pos =      int(fields[1]),
+			data =          fields 
+		)
+	
+	@classmethod
+	def from_gff (cls, line, references):
+		'''
+		make a GenomeFeature from a line of a GFF file
+		you must give a list of reference names, in order, so it can find the index
+		returns the split but unparsed fields in self.data
+		consider making data an ordered dictionary for easy un-parsing
+		'''
+		fields = line.rstrip().split('\t')
+		return cls(
+			reference_id =  references.index(fields[0]),
+			left_pos =      int(fields[3]),
+			right_pos =     int(fields[4]),
+			is_reverse =    fields[6] == '-',
+			data =          fields
+		)
 	
 	# accessing the attributes
 	
@@ -390,12 +422,12 @@ class BedStream (FeatureStream):
 	given an iterable of BED-format lines (e.g. an opened BED file), yield GenomeFeatures
 	you can provide a list of reference names, in order, or trust the BED data and learn automatically
 	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the BED data the indexes won't match other data sources
-	this use a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature.from_bed
+	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature.from_bed
 	'''
 	
 	__slots__ = 'fixed_references', 'reference_lookup'
 	
-	def __init__ (self, *args, references = None, **kwargs): # how do I pass args and kwargs while putting the new parameter last?
+	def __init__ (self, *args, references = None, **kwargs):
 		super().__init__(*args, **kwargs)
 		if references is None:
 			self.fixed_references = False
@@ -406,7 +438,7 @@ class BedStream (FeatureStream):
 	
 	def _get_feature (self):
 		fields = next(self.source).rstrip().split()
-		while len(fields) < 3: # skip bad lines
+		while fields[0].startswith('#') or len(fields) < 3: # skip bad lines
 			fields = next(self.source).rstrip().split()
 		reference_name, left_pos, right_pos = fields[0], int(fields[1]) + 1, int(fields[2])
 		try:
@@ -422,6 +454,102 @@ class BedStream (FeatureStream):
 			left_pos =      left_pos,
 			right_pos =     right_pos,
 			is_reverse =    len(fields) >= 6 and fields[5] == '-',
+			data =          fields
+		)
+			
+	@property
+	def references (self):
+		'''
+		in case you need to check the automatically generated list
+		'''
+		return list(self.reference_lookup.keys())
+
+
+class VcfStream (FeatureStream):
+	'''
+	given an iterable of VCF-format lines (e.g. an opened VCF file), yield GenomeFeatures
+	you can provide a list of reference names, in order, or trust the VCF data and learn automatically
+	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the VCF data the indexes won't match other data sources
+	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature.from_vcf
+	subclass to parse named fields (including bonus fields specified in header)
+	'''
+	
+	__slots__ = 'fixed_references', 'reference_lookup'
+	
+	def __init__ (self, *args, references = None, **kwargs):
+		super().__init__(*args, **kwargs)
+		if references is None:
+			self.fixed_references = False
+			self.reference_lookup = collections.OrderedDict()
+		else:
+			self.fixed_references = True
+			self.reference_lookup = collections.OrderedDict(zip(references, range(len(references))))
+	
+	def _get_feature (self):
+		fields = next(self.source).rstrip().split('\t')
+		while fields[0].startswith('#') or len(fields) < 7: # skip bad lines
+			fields = next(self.source).rstrip().split('\t')
+		reference_name, pos = fields[0], int(fields[1])
+		try:
+			reference_id = self.reference_lookup[reference_name]
+		except KeyError:
+			if self.fixed_references:
+				raise KeyError('unknown reference name %s in item %i' % (reference_name, self.line))
+			else:
+				reference_id = len(self.reference_lookup)
+				self.reference_lookup[reference_name] = reference_id
+		return GenomeFeature(
+			reference_id =  reference_id,
+			left_pos =      pos,
+			data =          fields
+		)
+			
+	@property
+	def references (self):
+		'''
+		in case you need to check the automatically generated list
+		'''
+		return list(self.reference_lookup.keys())
+
+
+class GffStream (FeatureStream):
+	'''
+	given an iterable of GFF-format lines (e.g. an opened GFF file), yield GenomeFeatures
+	you can provide a list of reference names, in order, or trust the GFF data and learn automatically
+	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the GFF data the indexes won't match other data sources
+	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature.from_gff
+	subclass to parse named fields (will be tricky because of user-definable fields)
+	'''
+	
+	__slots__ = 'fixed_references', 'reference_lookup'
+	
+	def __init__ (self, *args, references = None, **kwargs):
+		super().__init__(*args, **kwargs)
+		if references is None:
+			self.fixed_references = False
+			self.reference_lookup = collections.OrderedDict()
+		else:
+			self.fixed_references = True
+			self.reference_lookup = collections.OrderedDict(zip(references, range(len(references))))
+	
+	def _get_feature (self):
+		fields = next(self.source).rstrip().split('\t')
+		while fields[0].startswith('#') or len(fields) < 8: # skip bad lines
+			fields = next(self.source).rstrip().split('\t')
+		reference_name = fields[0]
+		try:
+			reference_id = self.reference_lookup[reference_name]
+		except KeyError:
+			if self.fixed_references:
+				raise KeyError('unknown reference name %s in item %i' % (reference_name, self.line))
+			else:
+				reference_id = len(self.reference_lookup)
+				self.reference_lookup[reference_name] = reference_id
+		return GenomeFeature(
+			reference_id =  reference_id,
+			left_pos =      int(fields[3]),
+			right_pos =     int(fields[4]),
+			is_reverse =    fields[6] == '-',
 			data =          fields
 		)
 			
