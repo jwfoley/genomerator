@@ -4,8 +4,9 @@ import collections
 # make a wiggle reader
 # make a FASTA writer
 # this also suggests 2bit should be supported
-# make GFF readers/writers
-# make GTF readers/writers (clever way to export the exons?)
+# make VCF writer
+# make GFF writers
+# make GTF writers (clever way to export the exons?)
 # still looking for sequential-read bigBed/bigWig module
 
 
@@ -360,7 +361,7 @@ class FeatureStream (object):
 	
 	__slots__ = 'source', 'default_data', 'filter', 'verify_sorting', 'previous_feature', 'count_pass', 'count_fail'
 	
-	def __init__ (self, source, default_data = None, filter = (lambda x: True), verify_sorting = True):
+	def __init__ (self, source, default_data = None, filter = (lambda x: True), verify_sorting = False):
 		# look at imagesequence for an analogy
 		self.source = source
 		self.filter = filter
