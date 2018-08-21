@@ -433,6 +433,70 @@ class BedStream (FeatureStream):
 		return list(self.reference_lookup.keys())
 
 
+class FastaStream (FeatureStream):
+	'''
+	given an iterable of FASTA-format lines (e.g. an opened FASTA file), yield GenomeFeatures of the sequences
+	reference names are indexed in the order they appear, which means they're not all accessible until they're all read
+	you can specify the span (number of bases per chunk) if you don't just want one at a time
+	if span > 1, return_partial determines whether to return potentially shorter subsequences at the ends of input sequences
+	handles buffering given the fact that FASTA is usually split across arbtirary line length
+	next idea: allow overlaps!
+	'''
+	
+	__slots__ = 'span', 'return_partial', 'references', '_sequence_buffer', 'left_pos', '_feature_generator'
+	
+	def __init__ (self, *args, span = 1, return_partial = True, **kwargs):
+		super().__init__(*args, verify_sorting = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
+		self.span = span
+		self.return_partial = return_partial
+		self.references = []
+		self._sequence_buffer = collections.deque()
+		self.left_pos = 1 # position of the leftmost base in the sequence buffer
+		self._feature_generator = self._yield_features()
+	
+	def _create_feature (self, length):
+		seq = ''.join(self._sequence_buffer.popleft() for i in range(length))
+		left_pos = self.left_pos
+		self.left_pos += length
+		return GenomeFeature (
+			reference_id =  len(self.references) - 1, # assume we're on the most recent reference
+			left_pos =      left_pos,
+			right_pos =     left_pos + length - 1,
+			data =          seq
+		)
+	
+	def _purge_buffer (self):
+		while len(self._sequence_buffer) >= self.span:
+			yield self._create_feature(self.span)
+		if len(self._sequence_buffer) > 0:
+			if self.return_partial:
+				yield self._create_feature(len(self._sequence_buffer))
+			else:
+				self._sequence_buffer.clear()			
+		self.left_pos = 1
+	
+	def _yield_features (self):
+		while True: # this seems inelegant
+			while len(self._sequence_buffer) < self.span:
+				try:
+					new_line = next(self.source)
+				except StopIteration as exception: # end of the input
+					for feature in self._purge_buffer(): yield feature
+					raise exception
+				
+				if new_line.startswith('>'): # found a reference header
+					for feature in self._purge_buffer(): yield feature
+					self.references += [new_line[1:].rstrip().strip()]
+				else: # more sequence
+					self._sequence_buffer.extend(new_line.rstrip())
+			
+			while len(self._sequence_buffer) >= self.span:
+				yield self._create_feature(self.span)
+	
+	def _get_feature (self):
+		return next(self._feature_generator)
+
+
 class Wiggler (object):
 	'''
 	export GenomeFeatures to UCSC wiggle format (variableStep; https://genome.ucsc.edu/goldenPath/help/wiggle.html)
