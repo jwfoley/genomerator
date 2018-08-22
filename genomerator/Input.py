@@ -17,8 +17,15 @@ class FeatureStream (object):
 	
 	__slots__ = 'source', 'default_data', 'filter', 'verify_order', 'fixed_references', '_reference_lookup', '_previous_feature', 'count_pass', 'count_fail'
 	
-	def __init__ (self, source, references = None, default_data = None, filter = (lambda x: True), verify_order = False):
+	def __init__ (self,
+		source,
+		references =    None,
+		default_data =  None,
+		filter =        (lambda x: True),
+		verify_order =  False
+	):
 		# look at imagesequence for an analogy
+		assert isinstance(source, collections.Iterable)
 		self.source = source
 		self.filter = filter
 		self.default_data = default_data
