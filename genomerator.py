@@ -380,25 +380,49 @@ class FeatureStream (object):
 	'''
 	given an iterable of GenomeFeature instances, yield them back
 	but also verify correct sort order, if desired, and keep a count
+	you can provide a list of reference names, in order, or trust the data and learn automatically
+	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources
+	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature's alternative constructors
 	optionally replace the data with something user-specified instead
 	optionally filter the data to only return certain features
 	what if this could be a subclass of GenomeFeature so its position etc. can be easily compared? risky but interesting
 	consider writing this so it just knows which type of data is coming in instead of subclasses
-	move the reference_lookup stuff into here because almost all the subclasses take names? (could verify matching names/ids for SAM too)
+	OrderedDict might not be the best container for the lookup table (?)
 	'''
 	
-	__slots__ = 'source', 'default_data', 'filter', 'verify_sorting', 'previous_feature', 'count_pass', 'count_fail'
+	__slots__ = 'source', 'default_data', 'filter', 'verify_order', 'fixed_references', '_reference_lookup', '_previous_feature', 'count_pass', 'count_fail'
 	
-	def __init__ (self, source, default_data = None, filter = (lambda x: True), verify_sorting = False):
+	def __init__ (self, source, references = None, default_data = None, filter = (lambda x: True), verify_order = False):
 		# look at imagesequence for an analogy
 		self.source = source
 		self.filter = filter
 		self.default_data = default_data
-		self.verify_sorting = verify_sorting
-		self.previous_feature = None
+		self.verify_order = verify_order
+		self._previous_feature = None
 		self.count_pass = 0
 		self.count_fail = 0
+		if references is None:
+			self.fixed_references = False
+			self._reference_lookup = collections.OrderedDict()
+		else:
+			self.fixed_references = True
+			self._reference_lookup = collections.OrderedDict(zip(references, range(len(references))))
 	
+	def _get_reference_id (self, reference_name):
+		'''
+		look up the ID of a reference name
+		if not using a predefined list, update the observed list as needed
+		'''
+		try:
+			return self._reference_lookup[reference_name]
+		except KeyError:
+			if self.fixed_references:
+				raise KeyError('unknown reference name %s' % (reference_name))
+			else:
+				reference_id = len(self._reference_lookup)
+				self._reference_lookup[reference_name] = reference_id
+				return reference_id
+		
 	def _get_feature (self):
 		'''
 		this exists mainly to be replaced in subclasses
@@ -418,12 +442,19 @@ class FeatureStream (object):
 	
 	def __next__ (self):
 		new_feature = self._try_until_pass()
-		if self.verify_sorting and not (self.previous_feature is None or new_feature >= self.previous_feature): raise RuntimeError('input is not properly sorted in item %i' % self.count)
-		self.previous_feature = new_feature
+		if self.verify_order and not (self._previous_feature is None or new_feature >= self._previous_feature): raise RuntimeError('input is not properly sorted in item %i' % self.count)
+		self._previous_feature = new_feature
 		return new_feature
 	
 	def __iter__ (self):
 		return self
+	
+	@property
+	def references (self):
+		'''
+		in case you need to check the automatically generated list
+		'''
+		return list(self._reference_lookup.keys())
 
 
 class SamStream (FeatureStream):
@@ -433,15 +464,13 @@ class SamStream (FeatureStream):
 	
 	__slots__ = 'unaligned'
 	
-	def __init__ (self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.unaligned = 0
-	
 	def _get_feature (self):
 		alignment = next(self.source)
 		while alignment.is_unmapped:
 			self.unaligned += 1
 			alignment = next(self.source)
+		if self.fixed_references and not alignment.reference_id == self._reference_lookup[alignment.reference_name]:
+			raise RuntimeError('wrong reference ID for alignment %s' % alignment.query_name)
 		return GenomeFeature.from_alignedsegment(alignment)
 
 
@@ -451,55 +480,27 @@ class VariantStream (FeatureStream):
 	'''
 	
 	def _get_feature (self):
-		return GenomeFeature.from_variantrecord(next(self.source))
+		variant_record = next(self.source)
+		if self.fixed_references and not variant_record.rid == self._reference_lookup[variant_record.chrom]:
+			raise RuntimeError('wrong reference ID for variant record %s' % variant_record.id)
+		return GenomeFeature.from_variantrecord(variant_record)
 
 
 class BedStream (FeatureStream):
 	'''
 	given an iterable of BED-format lines (e.g. an opened BED file), yield GenomeFeatures
-	you can provide a list of reference names, in order, or trust the data and learn automatically
-	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources
-	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature.from_bed
 	'''
-	
-	__slots__ = 'fixed_references', '_reference_lookup'
-	
-	def __init__ (self, *args, references = None, **kwargs):
-		super().__init__(*args, **kwargs)
-		if references is None:
-			self.fixed_references = False
-			self._reference_lookup = collections.OrderedDict()
-		else:
-			self.fixed_references = True
-			self._reference_lookup = collections.OrderedDict(zip(references, range(len(references))))
-	
 	def _get_feature (self):
 		fields = next(self.source).rstrip().split()
 		while fields[0].startswith('#') or len(fields) < 3: # skip bad lines
 			fields = next(self.source).rstrip().split()
-		reference_name, left_pos, right_pos = fields[0], int(fields[1]) + 1, int(fields[2])
-		try:
-			reference_id = self._reference_lookup[reference_name]
-		except KeyError:
-			if self.fixed_references:
-				raise KeyError('unknown reference name %s in item %i' % (reference_name, self.line))
-			else:
-				reference_id = len(self._reference_lookup)
-				self._reference_lookup[reference_name] = reference_id
 		return GenomeFeature(
-			reference_id =  reference_id,
-			left_pos =      left_pos,
-			right_pos =     right_pos,
+			reference_id =  self._get_reference_id(fields[0]),
+			left_pos =      int(fields[1]) + 1,
+			right_pos =     int(fields[2]),
 			is_reverse =    len(fields) >= 6 and fields[5] == '-',
 			data =          fields
 		)
-			
-	@property
-	def references (self):
-		'''
-		in case you need to check the automatically generated list
-		'''
-		return list(self._reference_lookup.keys())
 
 
 class WiggleStream (FeatureStream):
@@ -510,16 +511,10 @@ class WiggleStream (FeatureStream):
 	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources	
 	'''
 	
-	__slots__ = 'fixed_references', 'split_spans', '_reference_lookup', '_format', '_step', '_span', '_start', '_reference_id', '_count_since_header'
+	__slots__ = 'split_spans', '_format', '_step', '_span', '_start', '_reference_id', '_count_since_header'
 	
-	def __init__ (self, *args, references = None, split_spans = True, **kwargs):
+	def __init__ (self, *args, split_spans = True, **kwargs):
 		super().__init__(*args, **kwargs)
-		if references is None:
-			self.fixed_references = False
-			self._reference_lookup = collections.OrderedDict()
-		else:
-			self.fixed_references = True
-			self._reference_lookup = collections.OrderedDict(zip(references, range(len(references))))
 		self.split_spans = split_spans
 	
 	def _get_feature (self):
@@ -527,18 +522,8 @@ class WiggleStream (FeatureStream):
 		while len(fields) == 0 or fields[0] == 'track': fields = next(self.source).rstrip().split() # skip empty lines and track definition
 		if fields[0] in ('variableStep', 'fixedStep'): # beginning of a new chromosome
 			self._format = fields[0]
-			
-			# parse reference name
 			assert fields[1].startswith('chrom=')
-			reference_name = fields[1][6:]
-			try:
-				self._reference_id = self._reference_lookup[reference_name]
-			except KeyError:
-				if self.fixed_references:
-					raise KeyError('unknown reference name %s in item %i' % (reference_name, self.line))
-				else:
-					self._reference_id = len(self._reference_lookup)
-					self._reference_lookup[reference_name] = self._reference_id
+			self._reference_id = self._get_reference_id(fields[1][6:])
 			
 			# parse format-specific settings
 			if self._format == 'variableStep':
@@ -598,44 +583,17 @@ class GffStream (FeatureStream):
 	subclass to parse named fields (will be tricky because of user-definable fields)
 	'''
 	
-	__slots__ = 'fixed_references', '_reference_lookup'
-	
-	def __init__ (self, *args, references = None, **kwargs):
-		super().__init__(*args, **kwargs)
-		if references is None:
-			self.fixed_references = False
-			self._reference_lookup = collections.OrderedDict()
-		else:
-			self.fixed_references = True
-			self._reference_lookup = collections.OrderedDict(zip(references, range(len(references))))
-	
 	def _get_feature (self):
 		fields = next(self.source).rstrip().split('\t')
 		while fields[0].startswith('#') or len(fields) < 8: # skip bad lines
 			fields = next(self.source).rstrip().split('\t')
-		reference_name = fields[0]
-		try:
-			reference_id = self._reference_lookup[reference_name]
-		except KeyError:
-			if self.fixed_references:
-				raise KeyError('unknown reference name %s in item %i' % (reference_name, self.line))
-			else:
-				reference_id = len(self._reference_lookup)
-				self._reference_lookup[reference_name] = reference_id
 		return GenomeFeature(
-			reference_id =  reference_id,
+			reference_id =  self._get_reference_id(fields[0]),
 			left_pos =      int(fields[3]),
 			right_pos =     int(fields[4]),
 			is_reverse =    fields[6] == '-',
 			data =          fields
 		)
-			
-	@property
-	def references (self):
-		'''
-		in case you need to check the automatically generated list
-		'''
-		return list(self._reference_lookup.keys())
 
 
 class FastaStream (FeatureStream):
@@ -648,23 +606,22 @@ class FastaStream (FeatureStream):
 	next idea: allow overlaps!
 	'''
 	
-	__slots__ = 'span', 'return_partial', 'references', '_sequence_buffer', 'left_pos', '_feature_generator'
+	__slots__ = 'span', 'return_partial', '_sequence_buffer', '_left_pos', '_reference_id', '_feature_generator'
 	
 	def __init__ (self, *args, span = 1, return_partial = True, **kwargs):
-		super().__init__(*args, verify_sorting = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
+		super().__init__(*args, verify_order = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
 		self.span = span
 		self.return_partial = return_partial
-		self.references = []
 		self._sequence_buffer = collections.deque()
 		self.left_pos = 1 # position of the leftmost base in the sequence buffer
 		self._feature_generator = self._yield_features()
 	
 	def _create_feature (self, length):
 		seq = ''.join(self._sequence_buffer.popleft() for i in range(length))
-		left_pos = self.left_pos
-		self.left_pos += length
+		left_pos = self._left_pos
+		self._left_pos += length
 		return GenomeFeature (
-			reference_id =  len(self.references) - 1, # assume we're on the most recent reference
+			reference_id =  self._reference_id,
 			left_pos =      left_pos,
 			right_pos =     left_pos + length - 1,
 			data =          seq
@@ -684,16 +641,16 @@ class FastaStream (FeatureStream):
 		while True: # this seems inelegant
 			while len(self._sequence_buffer) < self.span:
 				try:
-					new_line = next(self.source)
+					line = next(self.source)
 				except StopIteration as exception: # end of the input
 					for feature in self._purge_buffer(): yield feature
 					raise exception
 				
-				if new_line.startswith('>'): # found a reference header
+				if line.startswith('>'): # found a reference header
 					for feature in self._purge_buffer(): yield feature
-					self.references += [new_line[1:].rstrip().strip()]
+					self._reference_id = self._get_reference_id(line[1:].rstrip().strip())
 				else: # more sequence
-					self._sequence_buffer.extend(new_line.rstrip())
+					self._sequence_buffer.extend(line.rstrip())
 			
 			while len(self._sequence_buffer) >= self.span:
 				yield self._create_feature(self.span)
@@ -713,7 +670,7 @@ class Wiggler (object):
 	verify input is sorted *and* non-overlapping
 	'''
 	
-	__slots__ = 'reference_names', 'span', 'definition', 'reference_id'
+	__slots__ = 'span', 'definition', 'reference_id'
 	
 	def __init__ (self, reference_names, span = 1, definition = None):
 		self.reference_names = reference_names
