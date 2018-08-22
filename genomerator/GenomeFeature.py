@@ -3,7 +3,6 @@ class GenomeFeature (object):
 	container for a generic genome feature with reference ID number (not name), left and right positions (1-based), strand (as 'is_reverse'), and embedded data of any kind
 	if no right_pos is specified, it represents a single genome position (and right_pos = left_pos)
 	non-stranded features default to the forward strand (is_reverse = False)
-	is it possible to get to self.data by dereferencing the instance like a C++ iterator? does this have to be a subclass of a pointer or something?
 	'''
 	
 	__slots__ = 'reference_id', 'left_pos', 'right_pos', 'is_reverse', 'data'
@@ -77,8 +76,6 @@ class GenomeFeature (object):
 		make a GenomeFeature from a line of a BED file
 		you must give a list of reference names, in order, so it can find the index
 		returns the split but unparsed fields in self.data
-		consider making data an ordered dictionary for easy un-parsing
-		but then also consider allowing user to specify the names of extra nonstandard fields (this will imply the number of extra fields, and then when parsing the file we will know the number of standard fields after splitting and subtracting that)
 		''' 
 		fields = line.rstrip().split()
 		return cls(
@@ -95,7 +92,6 @@ class GenomeFeature (object):
 		make a GenomeFeature from a line of a GFF file
 		you must give a list of reference names, in order, so it can find the index
 		returns the split but unparsed fields in self.data
-		consider making data an ordered dictionary for easy un-parsing
 		'''
 		fields = line.rstrip().split('\t')
 		return cls(
@@ -113,14 +109,14 @@ class GenomeFeature (object):
 		'''
 		return a new instance containing only the leftmost position, for quick comparisons
 		'''
-		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos, is_reverse = self.is_reverse, data = self.data) # should this be self.__class__? the problem is that it doesn't work in inheritance
+		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos, is_reverse = self.is_reverse, data = self.data)
 	
 	@property
 	def right (self):
 		'''
 		return a new instance containing only the rightmost position, for quick comparisons
 		'''
-		return GenomeFeature(reference_id = self.reference_id, left_pos = self.right_pos, is_reverse = self.is_reverse, data = self.data) # should this be self.__class__? the problem is that it doesn't work in inheritance
+		return GenomeFeature(reference_id = self.reference_id, left_pos = self.right_pos, is_reverse = self.is_reverse, data = self.data)
 	
 	@property
 	def start (self):
@@ -150,8 +146,6 @@ class GenomeFeature (object):
 		'''
 		return self.left_pos if self.is_reverse else self.right_pos	
 	
-	# consider adding a __getitem__ by index i that returns a new instance containing the ith position in the range
-	
 	def __len__ (self):
 		return self.right_pos - self.left_pos + 1
 	
@@ -169,8 +163,6 @@ class GenomeFeature (object):
 		return a new instance with the right coordinate shifted the specified distance
 		'''
 		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos, right_pos = self.right_pos + distance, is_reverse = self.is_reverse, data = self.data)
-	
-	# consider something for shifting forward/backward depending on feature strand
 	
 	def __add__ (self, distance):
 		'''
@@ -230,11 +222,10 @@ class GenomeFeature (object):
 	def intersection (self, other):
 		'''
 		return a GenomeFeature of the overlap between two regions (preserves this one's data), or None if no overlap
-		check this for bugs!
 		'''
 		if other.reference_id != self.reference_id: return None
 		if other.right_pos < self.left_pos or self.right_pos < other.left_pos: return None
-		return GenomeFeature( # should this be self.__class__? the problem is that it doesn't work in inheritance
+		return GenomeFeature(
 			reference_id =  self.reference_id,
 			left_pos =      max(self.left_pos, other.left_pos),
 			right_pos =     min(self.right_pos, other.right_pos),
@@ -262,7 +253,6 @@ class GenomeFeature (object):
 	
 	
 	# progress (proportion of genome traversed)
-	# make a class of progress tracker that stores the list
 	
 	def progress (self, reference_lengths):
 		total_length = sum(reference_lengths)
@@ -275,8 +265,6 @@ class GenomeFeature (object):
 	
 	
 	# exporting
-	# use a class to store the names
-	# should these be in a separate library for file formats?
 	
 	def bed (self,
 		reference_names,

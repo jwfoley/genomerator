@@ -10,9 +10,6 @@ class FeatureStream (object):
 	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature's alternative constructors
 	optionally replace the data with something user-specified instead
 	optionally filter the data to only return certain features
-	what if this could be a subclass of GenomeFeature so its position etc. can be easily compared? risky but interesting
-	consider writing this so it just knows which type of data is coming in instead of subclasses
-	OrderedDict might not be the best container for the lookup table (?)
 	'''
 	
 	__slots__ = 'source', 'default_data', 'filter', 'verify_order', 'fixed_references', '_reference_lookup', '_previous_feature', 'count_pass', 'count_fail'
@@ -24,7 +21,6 @@ class FeatureStream (object):
 		filter =        (lambda x: True),
 		verify_order =  False
 	):
-		# look at imagesequence for an analogy
 		assert isinstance(source, collections.Iterable)
 		self.source = source
 		self.filter = filter
@@ -139,8 +135,6 @@ class WiggleStream (FeatureStream):
 	'''
 	given an iterable of wiggle-format lines (e.g. an opened wiggle file), yield GenomeFeatures
 	yields each genome position separately, even if file represents continguous runs, unless you specify split_spans = False
-	you can provide a list of reference names, in order, or trust the data and learn automatically
-	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources	
 	'''
 	
 	__slots__ = 'split_spans', '_format', '_step', '_span', '_start', '_reference_id', '_count_since_header'
@@ -209,10 +203,6 @@ class WiggleStream (FeatureStream):
 class GffStream (FeatureStream):
 	'''
 	given an iterable of GFF-format lines (e.g. an opened GFF file), yield GenomeFeatures
-	you can provide a list of reference names, in order, or trust the data and learn automatically
-	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources
-	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature.from_gff
-	subclass to parse named fields (will be tricky because of user-definable fields)
 	'''
 	
 	def _get_feature (self):
@@ -235,7 +225,6 @@ class FastaStream (FeatureStream):
 	you can specify the span (number of bases per chunk) if you don't just want one at a time
 	if span > 1, return_partial determines whether to return potentially shorter subsequences at the ends of input sequences
 	handles buffering given the fact that FASTA is usually split across arbtirary line length
-	next idea: allow overlaps!
 	'''
 	
 	__slots__ = 'span', 'return_partial', '_sequence_buffer', '_left_pos', '_reference_id', '_feature_generator'

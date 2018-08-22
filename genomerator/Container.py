@@ -7,8 +7,6 @@ class GenomePositionDeque (GenomeFeature):
 	if you add items to the ends or remove them from the ends, the coordinates change appropriately
 	this can mean extending past the ends of the reference sequence!
 	inserting, removing, etc. is not allowed because it's ambiguous which way to move the coordinates
-	idea: it should be possible to extract a slice using only coordinates, not a GenomeFeature (with self.intersection), even though deque doesn't normally do this
-	idea: don't call this a deque at all, just a sliding window or whatever
 	'''
 	
 	def __init__ (self, *arg, **kwarg):
@@ -30,7 +28,6 @@ class GenomePositionDeque (GenomeFeature):
 	def get_pos (self, position):
 		'''
 		look up a value by genome position rather than list position
-		or is this redundant with self.data.__getitem__ and I should really just make this the default self.__getitem__ instead?
 		'''
 		if not self.left_pos <= position <= self.right_pos: raise IndexError
 		return self.data[position - self.left_pos]
@@ -102,14 +99,13 @@ class GenomePositionDeque (GenomeFeature):
 	
 	# full-length operations
 	
-	def count (self, value): # consider count = self.data.count but it might not work
+	def count (self, value):
 		return self.data.count(value)
 	
 	def reverse (self):
 		return self.data.reverse()
 	
 	def rotate (self, steps = 1):
-		# maybe this should do popping and stuff
 		self.data.rotate(steps)
 		self.left_pos += steps
 		self.right_pos += steps
@@ -122,20 +118,13 @@ class GenomePositionDeque (GenomeFeature):
 			data =          self.data.copy()
 		)
 	
-	def intersects(self, other):
-		# this is in the wrong class
-		return (
-			other.reference_id == self.reference_id and
-			not (other.right_pos < self.left_pos or self.right_pos < other.left_pos)
-		)
-	
 	def intersection(self, other):
 		'''
 		return an instance of the overlap between this deque and another genome region, including only the data in the intersection, or None if no overlap
 		use this to slice part of the original region too
-		check this for bugs!
 		'''
-		if not self.intersects(other): return None
+		if other.reference_id != self.reference_id: return None
+		if other.right_pos < self.left_pos or self.right_pos < other.left_pos: return None
 		new_left = max(self.left_pos, other.left_pos)
 		new_right = min(self.right_pos, other.right_pos)
 		return self.__class__(
@@ -150,8 +139,6 @@ class GenomeBuffer (GenomeFeature):
 	'''
 	a generator that maintains an internal buffer (deque) of coordinate-sorted GenomeFeatures, harvested from some other iterable, and pops them off when some condition is met (e.g. newest feature doesn't overlap the oldest, implying no future features will overlap it either)
 	left and right pos track the range of *left* positions of all features in the buffer (some of them may extend outside it)
-	consider making two versions: a "pull buffer" (takes as many features from the starting iterable as needed to yield one new feature at a time) and a "push buffer" (push one feature from the starting iterable at a time, yielding 0, 1, or multiple popped-off features)
-	# or maybe only the "push buffer" is useful?
 	'''
 	
 	__slots__ = '_feature_iterable'
