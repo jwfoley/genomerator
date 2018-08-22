@@ -1,3 +1,4 @@
+import collections
 from .GenomeFeature import GenomeFeature
 
 class GenomePositionDeque (GenomeFeature):
