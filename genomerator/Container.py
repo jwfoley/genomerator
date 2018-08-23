@@ -25,12 +25,20 @@ class GenomeArray (GenomeFeature):
 	# the base class' get_pos and __iter__ are defined relative to __getitem__ so they don't need to be replaced
 	
 	def __getitem__ (self, index):
-		if 0 <= index < len(self):
-			return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos + index, is_reverse = self.is_reverse, data = self.data[index])
-		elif -1 >= index >= -len(self):
-			return GenomeFeature(reference_id = self.reference_id, left_pos = self.right_pos + index + 1, is_reverse = self.is_reverse, data = self.data[index])
+		if isinstance(index, int): # single index
+			return GenomeArray(reference_id = self.reference_id, left_pos = self._compute_position(index), is_reverse = self.is_reverse, data = self.data[index])
+			
+		elif isinstance(index, slice): # slice
+			if index.step is not None: raise IndexError('can only slice by step = 1')
+			if index.start is not None and index.stop is not None and index.stop <= index.start: raise IndexError
+			
+			start_pos = (self.left_pos if index.start is None else self._compute_position(index.start))
+			stop_pos = (self.right_pos if index.stop is None else self._compute_position(index.stop)) # is 1 past the last position!
+			
+			return GenomeArray(reference_id = self.reference_id, left_pos = start_pos, right_pos = stop_pos - 1, is_reverse = self.is_reverse, data = collections.deque(self.data[i] for i in range(start_pos - self.left_pos, stop_pos - self.left_pos))) # deque can't be sliced directly so this needs a list comprehension
+		
 		else:
-			raise IndexError
+			raise TypeError
 	
 	def __setitem__ (self, index, value):
 		self.data[index] = value

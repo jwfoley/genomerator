@@ -154,16 +154,36 @@ class GenomeFeature (object):
 
 	# extracting positions
 	
-	def __getitem__ (self, index):
+	def _compute_position (self, index):
 		'''
-		return a new instance containing the same data but only at the specified position (as an offset index)
+		helper function to convert an offset index to a base position
+		position can be between the left position and 1 past the right position (for slicing)
 		'''
-		if 0 <= index < len(self):
-			return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos + index, is_reverse = self.is_reverse, data = self.data)
+		if 0 <= index <= len(self):
+			return self.left_pos + index
 		elif -1 >= index >= -len(self):
-			return GenomeFeature(reference_id = self.reference_id, left_pos = self.right_pos + index + 1, is_reverse = self.is_reverse, data = self.data)
+			return self.right_pos + index + 1
 		else:
 			raise IndexError
+	
+	def __getitem__ (self, index):
+		'''
+		return a new instance containing the same data but only at the specified position (as an offset index or slice)
+		'''
+		if isinstance(index, int): # single index
+			return GenomeFeature(reference_id = self.reference_id, left_pos = self._compute_position(index), is_reverse = self.is_reverse, data = self.data)
+				
+		elif isinstance(index, slice): # slice
+			if index.step is not None: raise IndexError('can only slice by step = 1')
+			if index.start is not None and index.stop is not None and index.stop <= index.start: raise IndexError
+			
+			new_left = (self.left_pos if index.start is None else self._compute_position(index.start))
+			new_right = (self.right_pos if index.stop is None else self._compute_position(index.stop))
+			
+			return GenomeFeature(reference_id = self.reference_id, left_pos = new_left, right_pos = new_right, is_reverse = self.is_reverse, data = self.data)
+
+		else:
+			raise TypeError
 	
 	def get_pos (self, position):
 		'''
