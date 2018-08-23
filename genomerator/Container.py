@@ -7,30 +7,33 @@ class GenomePositionDeque (GenomeFeature):
 	if you add items to the ends or remove them from the ends, the coordinates change appropriately
 	this can mean extending past the ends of the reference sequence!
 	inserting, removing, etc. is not allowed because it's ambiguous which way to move the coordinates
+	initializes with a default factory (like collections.defaultdict) to populate new positions when shifted
 	'''
 	
-	def __init__ (self, *arg, **kwarg):
+	def __init__ (self, *arg, default_factory = float, **kwarg):
 		super().__init__(*arg, **kwarg)
+		self.default_factory = default_factory
 		if self.data is not None:
 			assert len(self.data) == len(self)
 			self.data = collections.deque(self.data)
 		else:
-			self.data = collections.deque([None] * len(self))	
-
-	# position lookup
+			self.data = collections.deque([self.default_factory() for i in range(len(self))])
+	
+	
+	# extracting positions
+	# like the base class but extracts the data for only that position
+	# the base class' get_pos and __iter__ are defined relative to __getitem__ so they don't need to be replaced
 	
 	def __getitem__ (self, index):
-		return self.data[index]
+		if 0 <= index < len(self):
+			return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos + index, is_reverse = self.is_reverse, data = self.data[index])
+		elif -1 >= index >= -len(self):
+			return GenomeFeature(reference_id = self.reference_id, left_pos = self.right_pos + index + 1, is_reverse = self.is_reverse, data = self.data[index])
+		else:
+			raise IndexError
 	
 	def __setitem__ (self, index, value):
 		self.data[index] = value
-	
-	def get_pos (self, position):
-		'''
-		look up a value by genome position rather than list position
-		'''
-		if not self.left_pos <= position <= self.right_pos: raise IndexError
-		return self.data[position - self.left_pos]
 	
 	def set_pos (self, position, value):
 		'''
@@ -53,18 +56,47 @@ class GenomePositionDeque (GenomeFeature):
 		if stop is None: stop = self.right_pos + 1 # because it needs to be past the end
 		if not (self.left_pos <= start <= self.right_pos and self.left_pos <= stop <= self.right_pos + 1): raise IndexError
 		return self.data.index(value, start - self.left_pos, stop - self.left_pos) + self.left_pos
+
+
+	# modifying the coordinates (and returning a new modified instance)
+	# like base class but also changes the data appropriately
 	
-	def __iter__ (self):  
+	def shift_left (self, distance):
+		super().shift_left(distance)
+		if distance > 0:
+			for i in range(distance): self.data.popleft()
+		elif distance < 0:
+			self.data.extendleft([self.default_factory() for i in range(-distance)])
+	
+	def shift_right (self, distance):
+		super().shift_right(distance)
+		if distance > 0:
+			self.data.extend([self.default_factory() for i in range(distance)])
+		elif distance < 0:
+			for i in range(-distance): self.data.pop()
+	
+	def shift (self, distance):
 		'''
-		if you iterate over this class, it produces GenomeFeatures each containing the data from one genome position
-		iterate over self.data if you just want the deque contents
+		this one is tricky because of the deque
+		we want to avoid popping it when it's already empty
+		but we also want to avoid making it temporarily longer
+		so look before leaping
 		'''
-		return (GenomeFeature(
-			reference_id =  self.reference_id,
-			left_pos =      index + self.left_pos,
-			right_pos =     index + self.left_pos,
-			data =          value
-		) for index, value in zip(range(len(self)), self.data))
+		super().shift(distance)
+		if abs(distance) >= len(self): # in this case no original data will be preserved anyway
+			self.data = collections.deque([self.default_factory() for i in range(len(self))])
+		elif distance > 0: # moving right, so pop left first
+			for i in range(distance): self.data.popleft()
+			self.data.extend([self.default_factory() for i in range(distance)])
+		elif distance < 0: # moving left, so pop right first
+			for i in range(distance): self.data.pop()
+			self.data.extendleft([self.default_factory() for i in range(-distance)])
+	
+	def move (self, distance):
+		'''
+		change both coordinates but don't change the data
+		'''
+		super().shift(distance)
 		
 	
 	# adding position data

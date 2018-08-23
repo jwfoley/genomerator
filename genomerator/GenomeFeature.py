@@ -1,3 +1,5 @@
+import copy
+
 class GenomeFeature (object):
 	'''
 	container for a generic genome feature with reference ID number (not name), left and right positions (1-based), strand (as 'is_reverse'), and embedded data of any kind
@@ -149,40 +151,78 @@ class GenomeFeature (object):
 	def __len__ (self):
 		return self.right_pos - self.left_pos + 1
 	
+
+	# extracting positions
 	
-	# modifying the coordinates (and returning a new modified instance)
+	def __getitem__ (self, index):
+		'''
+		return a new instance containing the same data but only at the specified position (as an offset index)
+		'''
+		if 0 <= index < len(self):
+			return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos + index, is_reverse = self.is_reverse, data = self.data)
+		elif -1 >= index >= -len(self):
+			return GenomeFeature(reference_id = self.reference_id, left_pos = self.right_pos + index + 1, is_reverse = self.is_reverse, data = self.data)
+		else:
+			raise IndexError
+	
+	def get_pos (self, position):
+		'''
+		return a new instance containing the same data but only at the specified position (as a genome position)
+		'''
+		if not self.left_pos <= position <= self.right_pos: raise IndexError
+		return self[position - self.left_pos]
+	
+	def __iter__ (self):
+		'''
+		return a new instance for each single genome position
+		'''
+		for index in range(len(self)): yield self[index]
+		
+	
+	# modifying the coordinates
 	
 	def shift_left (self, distance):
 		'''
-		return a new instance with the left coordinate shifted the specified distance
+		shift the left coordinate by the specified distance (note: positive values shift it to the right)
 		'''
-		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos + distance, right_pos = self.right_pos, is_reverse = self.is_reverse, data = self.data)
+		if distance > len(self) - 1: raise IndexError
+		self.left_pos += distance
 	
 	def shift_right (self, distance):
 		'''
-		return a new instance with the right coordinate shifted the specified distance
+		shift the right coordinate by the specified distance
 		'''
-		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos, right_pos = self.right_pos + distance, is_reverse = self.is_reverse, data = self.data)
+		if distance < -(len(self) - 1): raise IndexError
+		self.right_pos += distance
+	
+	def shift (self, distance):
+		'''
+		shift both coordinates by the specified distance
+		'''
+		self.left_pos += distance
+		self.right_pos += distance
 	
 	def __add__ (self, distance):
 		'''
 		return a new instance with both coordinates shifted the specified distance
 		'''
-		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos + distance, right_pos = self.right_pos + distance, is_reverse = self.is_reverse, data = self.data)
+		new_instance = copy.deepcopy(self)
+		new_instance.shift(distance)
+		return new_instance
 
 	def __sub__ (self, distance):
 		'''
 		opposite of __add__
 		'''
-		return self.__add__(-distance)
+		self.__add__(-distance)
 	
 	def switch_strand (self):
 		'''
 		return a new instance with the opposite strandedness
 		'''
-		return GenomeFeature(reference_id = self.reference_id, left_pos = self.left_pos, right_pos = self.right_pos, is_reverse = not self.is_reverse, data = self.data)
-	
-	
+		self.is_reverse = not self.is_reverse
+		
+		
 	# comparisons
 	
 	def __eq__ (self, other): # note right_pos is not checked (for sort order)
