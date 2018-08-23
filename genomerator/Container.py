@@ -1,7 +1,7 @@
 import collections
 from .GenomeFeature import GenomeFeature
 
-class GenomePositionDeque (GenomeFeature):
+class GenomeArray (GenomeFeature):
 	'''
 	deque wrapper in which each element corresponds to a genome position
 	if you add items to the ends or remove them from the ends, the coordinates change appropriately
