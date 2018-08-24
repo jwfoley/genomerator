@@ -121,6 +121,12 @@ class BedStream (FeatureStream):
 	'''
 	given an iterable of BED-format lines (e.g. an opened BED file), yield GenomeFeatures
 	'''
+	__slots__ = 'parse'
+	
+	def __init__ (self, *args, parse = True, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.parse = parse	
+	
 	def _yield_features (self):
 		for line in self.source:
 			if line.startswith('#') or line.startswith('track') or line.startswith('browser'): continue
@@ -128,13 +134,7 @@ class BedStream (FeatureStream):
 			if len(line) == 0: continue
 			fields = line.split()
 			if len(fields) < 3: raise RuntimeError('bad format:\n%s' % line)
-			yield GenomeFeature(
-				reference_id =  self._get_reference_id(fields[0]),
-				left_pos =      int(fields[1]) + 1,
-				right_pos =     int(fields[2]),
-				is_reverse =    len(fields) >= 6 and fields[5] == '-',
-				data =          fields
-			)
+			yield GenomeFeature.from_bed(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse)
 
 
 class BedgraphStream (FeatureStream):
@@ -156,12 +156,7 @@ class BedgraphStream (FeatureStream):
 			if len(line) == 0: continue
 			fields = line.split()
 			if len(fields) != 4: raise RuntimeError('bad format:\n%s' % line)
-			full_feature = GenomeFeature(
-				reference_id =  self._get_reference_id(fields[0]),
-				left_pos =      int(fields[1]) + 1,
-				right_pos =     int(fields[2]),
-				data =          float(fields[3])
-			)
+			full_feature = GenomeFeature.from_bedgraph(line = line, reference_id = self._get_reference_id(fields[0]))
 			if self.split_spans:
 				for position_feature in full_feature: yield position_feature
 			else:
@@ -254,13 +249,7 @@ class GffStream (FeatureStream):
 			if len(line) == 0: continue
 			fields = line.split('\t')
 			if len(fields) < 8: raise RuntimeError('bad format:\n%s' % line)
-			yield GenomeFeature(
-				reference_id =  self._get_reference_id(fields[0]),
-				left_pos =      int(fields[3]),
-				right_pos =     int(fields[4]),
-				is_reverse =    fields[6] == '-',
-				data =          fields
-			)
+			yield GenomeFeature(line = line, reference_id = self._get_reference_id(fields[0]))
 
 
 class FastaStream (FeatureStream):

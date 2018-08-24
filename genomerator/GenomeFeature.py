@@ -73,10 +73,10 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_bed (cls, line, references, parse = True):
+	def from_bed (cls, line, reference_id, parse = True):
 		'''
 		make a GenomeFeature from a line of a BED file
-		you must give a list of reference names, in order, so it can find the index
+		you must give a reference_id because this format only has the name
 		returns the split but unparsed fields in self.data
 		''' 
 		fields = line.rstrip().split()
@@ -96,7 +96,7 @@ class GenomeFeature (object):
 		else:
 			data = fields
 		return cls(
-			reference_id =  references.index(fields[0]),
+			reference_id =  reference_id,
 			left_pos =      int(fields[1]) + 1,
 			right_pos =     int(fields[2]),
 			is_reverse =    len(fields) >= 6 and fields[5] == '-',
@@ -104,30 +104,30 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_bedgraph (cls, line, references):
+	def from_bedgraph (cls, line, reference_id):
 		'''
 		make a GenomeFeature from a line of a bedGraph file
-		you must give a list of reference names, in order, so it can find the index
+		you must give a reference_id because this format only has the name
 		parses the dataValue into self.data
 		'''
 		fields = line.rstrip().split()
 		return cls(
-			reference_id =  references.index(fields[0]),
+			reference_id =  reference_id,
 			left_pos =      int(fields[1]) + 1,
 			right_pos =     int(fields[2]),
 			data =          float(fields[3])
 		)
 	
 	@classmethod
-	def from_gff (cls, line, references):
+	def from_gff (cls, line, reference_id):
 		'''
 		make a GenomeFeature from a line of a GFF file
-		you must give a list of reference names, in order, so it can find the index
+		you must give a reference_id because this format only has the name
 		returns the split but unparsed fields in self.data
 		'''
 		fields = line.rstrip().split('\t')
 		return cls(
-			reference_id =  references.index(fields[0]),
+			reference_id =  reference_id,
 			left_pos =      int(fields[3]),
 			right_pos =     int(fields[4]),
 			is_reverse =    fields[6] == '-',
