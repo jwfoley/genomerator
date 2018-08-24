@@ -222,6 +222,17 @@ class GenomeFeature (object):
 		self.left_pos += distance
 		self.right_pos += distance
 	
+	def shift_forward (self, distance):
+		'''
+		shift both coordinates by the specified distance, strand-specifically
+		so is self.is_reverse is false, it moves right, otherwise it moves left
+		unless distance is negative, in which case it's the opposite
+		'''
+		if self.is_reverse:
+			self.shift(-distance)
+		else:
+			self.shift(distance)		
+	
 	def __add__ (self, distance):
 		'''
 		return a new instance with both coordinates shifted the specified distance
