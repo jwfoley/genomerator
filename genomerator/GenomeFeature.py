@@ -73,19 +73,34 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_bed (cls, line, references):
+	def from_bed (cls, line, references, parse = True):
 		'''
 		make a GenomeFeature from a line of a BED file
 		you must give a list of reference names, in order, so it can find the index
 		returns the split but unparsed fields in self.data
 		''' 
 		fields = line.rstrip().split()
+		if parse:
+			data = {}
+			try:
+				data['name'] =         None if fields[3] == '.' else fields[3]
+				data['score'] =        None if fields[4] == '.' else float(fields[4])
+				data['thickStart'] =   None if fields[6] == '.' else int(fields[6]) + 1
+				data['thickEnd'] =     None if fields[7] == '.' else int(fields[7])
+				data['itemRgb'] =      None if fields[8] == '.' else list(int(x) for x in fields[8].split(','))
+				data['blockCount'] =   None if fields[9] == '.' else int(fields[9])
+				data['blockSizes'] =   None if fields[10] == '.' else list(int(x) for x in fields[10].split(','))
+				data['blockStarts'] =  None if fields[11] == '.' else list(int(x) for x in fields[11].split(','))
+			except IndexError:
+				pass
+		else:
+			data = fields
 		return cls(
 			reference_id =  references.index(fields[0]),
 			left_pos =      int(fields[1]) + 1,
 			right_pos =     int(fields[2]),
 			is_reverse =    len(fields) >= 6 and fields[5] == '-',
-			data =          fields
+			data =          data
 		)
 	
 	@classmethod
