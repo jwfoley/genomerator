@@ -147,7 +147,7 @@ class BedgraphStream (FeatureStream):
 	def _yield_features (self):
 		for line in self.source:
 			fields = line.rstrip().split()
-			if len(fields) == 0 or fields[0].startswith('#') or fields[0] == 'track': continue
+			if len(fields) != 4 or fields[0].startswith('#') or fields[0] == 'track': continue
 			full_feature = GenomeFeature(
 				reference_id =  self._get_reference_id(fields[0]),
 				left_pos =      int(fields[1]) + 1,
@@ -177,9 +177,9 @@ class WiggleStream (FeatureStream):
 		self._feature_generator = self._yield_features()
 	
 	def _yield_features (self):
-		while True: # this seems inelegant; will break when self.source raises StopIteration
-			fields = next(self.source).rstrip().split()
-			while len(fields) == 0 or fields[0] == 'track': fields = next(self.source).rstrip().split() # skip empty lines and track definition
+		for line in self.source:
+			fields = line.rstrip().split()
+			if len(fields) == 0 or fields[0].startswith('#') or fields[0] == 'track': continue
 			if fields[0] in ('variableStep', 'fixedStep'): # beginning of a new chromosome
 				self._format = fields[0]
 				assert fields[1].startswith('chrom=')
@@ -208,34 +208,33 @@ class WiggleStream (FeatureStream):
 					raise NotImplementedError('this should never happen')
 				
 				self._count_since_header = 0
-				fields = next(self.source).rstrip().split() # read another line, which we assume (!) is now data
 			
-			# parse a line of data
-			if self._format == 'variableStep':
-				assert len(fields) == 2
-				left_pos = int(fields[0])
-				right_pos = left_pos + self._span - 1
-				value = float(fields[1])
-			elif self._format == 'fixedStep':
-				assert len(fields) == 1
-				left_pos = self._start + self._count_since_header * self._step
-				right_pos = left_pos + self._span - 1
-				value = float(fields[0])
-			else:
-				raise NotImplementedError('this should never happen')
-			self._count_since_header += 1
-			
-			# split the feature into single bases if necessary
-			full_feature = GenomeFeature(
-				reference_id =  self._reference_id,
-				left_pos =      left_pos,
-				right_pos =     right_pos,
-				data =          value
-			)
-			if self.split_spans:
-				for position_feature in full_feature: yield position_feature
-			else:
-				yield full_feature
+			else: # parse a line of data
+				if self._format == 'variableStep':
+					assert len(fields) == 2
+					left_pos = int(fields[0])
+					right_pos = left_pos + self._span - 1
+					value = float(fields[1])
+				if self._format == 'fixedStep':
+					assert len(fields) == 1
+					left_pos = self._start + self._count_since_header * self._step
+					right_pos = left_pos + self._span - 1
+					value = float(fields[0])
+				else:
+					raise NotImplementedError('this should never happen')
+				self._count_since_header += 1
+				
+				# split the feature into single bases if necessary
+				full_feature = GenomeFeature(
+					reference_id =  self._reference_id,
+					left_pos =      left_pos,
+					right_pos =     right_pos,
+					data =          value
+				)
+				if self.split_spans:
+					for position_feature in full_feature: yield position_feature
+				else:
+					yield full_feature
 			
 	def _get_feature (self):
 		return next(self._feature_generator)
@@ -275,7 +274,7 @@ class FastaStream (FeatureStream):
 		self.span = span
 		self.return_partial = return_partial
 		self._sequence_buffer = collections.deque()
-		self.left_pos = 1 # position of the leftmost base in the sequence buffer
+		self._left_pos = 1 # position of the leftmost base in the sequence buffer
 		self._feature_generator = self._yield_features()
 	
 	def _create_feature (self, length):
@@ -297,25 +296,19 @@ class FastaStream (FeatureStream):
 				yield self._create_feature(len(self._sequence_buffer))
 			else:
 				self._sequence_buffer.clear()			
-		self.left_pos = 1
+		self._left_pos = 1
 	
 	def _yield_features (self):
-		while True: # this seems inelegant
-			while len(self._sequence_buffer) < self.span:
-				try:
-					line = next(self.source)
-				except StopIteration as exception: # end of the input
-					for feature in self._purge_buffer(): yield feature
-					raise exception
-				
-				if line.startswith('>'): # found a reference header
-					for feature in self._purge_buffer(): yield feature
-					self._reference_id = self._get_reference_id(line[1:].rstrip().strip())
-				else: # more sequence
-					self._sequence_buffer.extend(line.rstrip())
-			
-			while len(self._sequence_buffer) >= self.span:
-				yield self._create_feature(self.span)
+		for line in self.source:
+			if line.startswith('>'): # found a reference header			
+				for feature in self._purge_buffer(): yield feature
+				self._reference_id = self._get_reference_id(line[1:].rstrip().strip())			
+			else: # more sequence
+				self._sequence_buffer.extend(line.rstrip())
+				while len(self._sequence_buffer) >= self.span:
+					yield self._create_feature(self.span)
+		
+		for feature in self._purge_buffer(): yield feature		
 	
 	def _get_feature (self):
 		return next(self._feature_generator)
