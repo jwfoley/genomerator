@@ -222,6 +222,26 @@ class GenomeFeature (object):
 		self.left_pos += distance
 		self.right_pos += distance
 	
+	def shift_start (self, distance):
+		'''
+		shift the beginning of the feature by the specified distance, strand-specifically
+		so if self.is_reverse is false, this shifts the left position to the right
+		or if self.is_reverse is true, this shifts the right position to the left				
+		'''
+		if self.is_reverse:
+			self.shift_right(-distance)
+		else:
+			self.shift_left(distance)
+	
+	def shift_end (self, distance):
+		'''
+		analogous to shift_start
+		'''
+		if self.is_reverse:
+			self.shift_left(-distance)
+		else:
+			self.shift_right(distance)
+	
 	def shift_forward (self, distance):
 		'''
 		shift both coordinates by the specified distance, strand-specifically
