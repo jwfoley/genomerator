@@ -354,12 +354,17 @@ class GenomeFeature (object):
 		'''
 		return self.left == other.left and self.right == other.right and self.is_reverse == other.is_reverse
 	
+	def intersects (self, other):
+		'''
+		test whether two features overlap
+		'''
+		return other.reference_id == self.reference_id and not (other.right_pos < self.left_pos or self.right_pos < other.left_pos)
+	
 	def intersection (self, other):
 		'''
 		return a GenomeFeature of the overlap between two regions (preserves this one's data), or None if no overlap
 		'''
-		if other.reference_id != self.reference_id: return None
-		if other.right_pos < self.left_pos or self.right_pos < other.left_pos: return None
+		if not self.intersects(other): return None
 		return GenomeFeature(
 			reference_id =  self.reference_id,
 			left_pos =      max(self.left_pos, other.left_pos),
