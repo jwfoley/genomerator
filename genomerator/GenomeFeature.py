@@ -89,6 +89,21 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
+	def from_bedgraph (cls, line, references):
+		'''
+		make a GenomeFeature from a line of a bedGraph file
+		you must give a list of reference names, in order, so it can find the index
+		parses the dataValue into self.data
+		'''
+		fields = line.rstrip().split()
+		return cls(
+			reference_id =  references.index(fields[0]),
+			left_pos =      int(fields[1]) + 1,
+			right_pos =     int(fields[2]),
+			data =          float(fields[3])
+		)
+	
+	@classmethod
 	def from_gff (cls, line, references):
 		'''
 		make a GenomeFeature from a line of a GFF file

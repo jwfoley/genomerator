@@ -131,6 +131,38 @@ class BedStream (FeatureStream):
 		)
 
 
+class BedgraphStream (FeatureStream):
+	'''
+	given an iterable of BED-format lines (e.g. an opened bedGraph file), yield GenomeFeatures
+	yields each genome position separately, even if file represents continguous runs, unless you specify split_spans = False
+	'''
+	
+	__slots__ = 'split_spans', '_feature_generator'
+	
+	def __init__ (self, *args, split_spans = True, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.split_spans = split_spans
+		self._feature_generator = self._yield_features()
+	
+	def _yield_features (self):
+		for line in self.source:
+			fields = line.rstrip().split()
+			if len(fields) == 0 or fields[0].startswith('#') or fields[0] == 'track': continue
+			full_feature = GenomeFeature(
+				reference_id =  self._get_reference_id(fields[0]),
+				left_pos =      int(fields[1]) + 1,
+				right_pos =     int(fields[2]),
+				data =          float(fields[3])
+			)
+			if self.split_spans:
+				for position_feature in full_feature: yield position_feature
+			else:
+				yield full_feature
+	
+	def _get_feature (self):
+		return next(self._feature_generator)
+
+
 class WiggleStream (FeatureStream):
 	'''
 	given an iterable of wiggle-format lines (e.g. an opened wiggle file), yield GenomeFeatures
