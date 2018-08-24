@@ -137,67 +137,76 @@ class WiggleStream (FeatureStream):
 	yields each genome position separately, even if file represents continguous runs, unless you specify split_spans = False
 	'''
 	
-	__slots__ = 'split_spans', '_format', '_step', '_span', '_start', '_reference_id', '_count_since_header'
+	__slots__ = 'split_spans', '_format', '_step', '_span', '_start', '_reference_id', '_count_since_header', '_feature_generator'
 	
 	def __init__ (self, *args, split_spans = True, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.split_spans = split_spans
+		self._feature_generator = self._yield_features()
 	
-	def _get_feature (self):
-		fields = next(self.source).rstrip().split()
-		while len(fields) == 0 or fields[0] == 'track': fields = next(self.source).rstrip().split() # skip empty lines and track definition
-		if fields[0] in ('variableStep', 'fixedStep'): # beginning of a new chromosome
-			self._format = fields[0]
-			assert fields[1].startswith('chrom=')
-			self._reference_id = self._get_reference_id(fields[1][6:])
+	def _yield_features (self):
+		while True: # this seems inelegant; will break when self.source raises StopIteration
+			fields = next(self.source).rstrip().split()
+			while len(fields) == 0 or fields[0] == 'track': fields = next(self.source).rstrip().split() # skip empty lines and track definition
+			if fields[0] in ('variableStep', 'fixedStep'): # beginning of a new chromosome
+				self._format = fields[0]
+				assert fields[1].startswith('chrom=')
+				self._reference_id = self._get_reference_id(fields[1][6:])
+				
+				# parse format-specific settings
+				if self._format == 'variableStep':
+					if len(fields) > 2:
+						assert len(fields) == 3
+						assert fields[2].startswith('span=')
+						self._span = int(fields[2][5:])
+					else:
+						self._span = 1
+				elif self._format == 'fixedStep':
+					assert fields[2].startswith('start=')
+					self._start = int(fields[2][6:])
+					assert fields[3].startswith('step=')
+					self._step = int(fields[3][5:])
+					if len(fields) > 4:
+						assert len(fields) == 5
+						assert fields[4].startswith('span=')
+						self._span = int(fields[4][5:])
+					else:
+						self._span = 1				
+				else:
+					raise NotImplementedError('this should never happen')
+				
+				self._count_since_header = 0
+				fields = next(self.source).rstrip().split() # read another line, which we assume (!) is now data
 			
-			# parse format-specific settings
+			# parse a line of data
 			if self._format == 'variableStep':
-				if len(fields) > 2:
-					assert len(fields) == 3
-					assert fields[2].startswith('span=')
-					self._span = int(fields[2][5:])
-				else:
-					self._span = 1
+				assert len(fields) == 2
+				left_pos = int(fields[0])
+				right_pos = left_pos + self._span - 1
+				value = float(fields[1])
 			elif self._format == 'fixedStep':
-				assert fields[2].startswith('start=')
-				self._start = int(fields[2][6:])
-				assert fields[3].startswith('step=')
-				self._step = int(fields[3][5:])
-				if len(fields) > 4:
-					assert len(fields) == 5
-					assert fields[4].startswith('span=')
-					self._span = int(fields[4][5:])
-				else:
-					self._span = 1				
+				assert len(fields) == 1
+				left_pos = self._start + self._count_since_header * self._step
+				right_pos = left_pos + self._span - 1
+				value = float(fields[0])
 			else:
 				raise NotImplementedError('this should never happen')
+			self._count_since_header += 1
 			
-			self._count_since_header = 0
-			fields = next(self.source).rstrip().split() # read another line, which we assume (!) is now data
-		
-		# parse a line of data
-		if self._format == 'variableStep':
-			assert len(fields) == 2
-			left_pos = int(fields[0])
-			right_pos = left_pos + self._span - 1
-			value = float(fields[1])
-		elif self._format == 'fixedStep':
-			assert len(fields) == 1
-			left_pos = self._start + self._count_since_header * self._step
-			right_pos = left_pos + self._span - 1
-			value = float(fields[0])
-		else:
-			raise NotImplementedError('this should never happen')
-		
-		self._count_since_header += 1
-		return GenomeFeature(
-			reference_id =  self._reference_id,
-			left_pos =      left_pos,
-			right_pos =     right_pos,
-			data =          value
-		)
-
+			# split the feature into single bases if necessary
+			full_feature = GenomeFeature(
+				reference_id =  self._reference_id,
+				left_pos =      left_pos,
+				right_pos =     right_pos,
+				data =          value
+			)
+			if self.split_spans:
+				for position_feature in full_feature: yield position_feature
+			else:
+				yield full_feature
+			
+	def _get_feature (self):
+		return next(self._feature_generator)
 
 
 class GffStream (FeatureStream):
