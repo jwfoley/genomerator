@@ -264,23 +264,30 @@ class FastaStream (FeatureStream):
 	reference names are indexed in the order they appear, which means they're not all accessible until they're all read
 	you can specify the span (number of bases per chunk) if you don't just want one at a time
 	if span > 1, return_partial determines whether to return potentially shorter subsequences at the ends of input sequences
+	if overlap = True, then returns overlapping sequences starting at each base position
 	handles buffering given the fact that FASTA is usually split across arbtirary line length
 	'''
 	
-	__slots__ = 'span', 'return_partial', '_sequence_buffer', '_left_pos', '_reference_id', '_feature_generator'
+	__slots__ = 'span', 'overlap', 'return_partial', '_sequence_buffer', '_left_pos', '_reference_id', '_feature_generator'
 	
-	def __init__ (self, *args, span = 1, return_partial = True, **kwargs):
+	def __init__ (self, *args, span = 1, overlap = False, return_partial = True, **kwargs):
 		super().__init__(*args, verify_order = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
+		assert isinstance(span, int) and span > 0
 		self.span = span
+		self.overlap = overlap
 		self.return_partial = return_partial
 		self._sequence_buffer = collections.deque()
 		self._left_pos = 1 # position of the leftmost base in the sequence buffer
 		self._feature_generator = self._yield_features()
 	
 	def _create_feature (self, length):
-		seq = ''.join(self._sequence_buffer.popleft() for i in range(length))
 		left_pos = self._left_pos
-		self._left_pos += length
+		if self.overlap:
+			seq = ''.join([self._sequence_buffer.popleft()] + [self._sequence_buffer[i] for i in range(length - 1)])
+			self._left_pos += 1
+		else:
+			seq = ''.join(self._sequence_buffer.popleft() for i in range(length))
+			self._left_pos += length
 		return GenomeFeature (
 			reference_id =  self._reference_id,
 			left_pos =      left_pos,
