@@ -125,7 +125,7 @@ class BedStream (FeatureStream):
 	
 	def __init__ (self, *args, parse = True, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.parse = parse	
+		self.parse = parse
 	
 	def _yield_features (self):
 		for line in self.source:
@@ -204,7 +204,7 @@ class WiggleStream (FeatureStream):
 						assert fields[4].startswith('span=')
 						self._span = int(fields[4][5:])
 					else:
-						self._span = 1				
+						self._span = 1
 				else:
 					raise NotImplementedError('this should never happen')
 				
@@ -242,6 +242,12 @@ class GffStream (FeatureStream):
 	'''
 	given an iterable of GFF-format lines (e.g. an opened GFF file), yield GenomeFeatures
 	'''
+	__slots__ = 'parse'
+	
+	def __init__ (self, *args, parse = True, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.parse = parse
+	
 	def _yield_features (self):
 		for line in self.source:
 			if line.startswith('#'): continue
@@ -249,7 +255,7 @@ class GffStream (FeatureStream):
 			if len(line) == 0: continue
 			fields = line.split('\t')
 			if len(fields) < 8: raise RuntimeError('bad format:\n%s' % line)
-			yield GenomeFeature(line = line, reference_id = self._get_reference_id(fields[0]))
+			yield GenomeFeature.from_gff(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse)
 
 
 class FastaStream (FeatureStream):

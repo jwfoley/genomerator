@@ -77,7 +77,8 @@ class GenomeFeature (object):
 		'''
 		make a GenomeFeature from a line of a BED file
 		you must give a reference_id because this format only has the name
-		returns the split but unparsed fields in self.data
+		parses the fields into self.data if parse = True
+		otherwise simply puts the unparsed, split strings into self.data (faster)
 		''' 
 		fields = line.rstrip().split()
 		if parse:
@@ -119,19 +120,32 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_gff (cls, line, reference_id):
+	def from_gff (cls, line, reference_id, parse = True):
 		'''
 		make a GenomeFeature from a line of a GFF file
-		you must give a reference_id because this format only has the name
-		returns the split but unparsed fields in self.data
+		you must give a list of reference names, in order, so it can find the index
+		parses the fields into self.data if parse = True
+		otherwise simply puts the unparsed, split strings into self.data (faster)
 		'''
 		fields = line.rstrip().split('\t')
+		if parse:
+			data = {
+				'source':      None if fields[1] == '.' else fields[1],
+				'type':        fields[2],
+				'score':       None if fields[5] == '.' else float(fields[5]),
+				'phase':       None if fields[7] == '.' else int(fields[7])
+			}
+			for attribute in fields[8].split(';'):
+				tag, value = attribute.split('=')
+				data[tag] = value
+		else:
+			data = fields
 		return cls(
 			reference_id =  reference_id,
 			left_pos =      int(fields[3]),
 			right_pos =     int(fields[4]),
 			is_reverse =    fields[6] == '-',
-			data =          fields
+			data =          data
 		)
 	
 	# accessing the attributes
