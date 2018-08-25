@@ -413,9 +413,6 @@ class GenomeFeature (object):
 		traversed_length = sum(reference_lengths[:self.reference_id]) + self.left_pos
 		return traversed_length / total_length
 	
-	def progress_percent (self, reference_lengths):
-		return round(100 * self.progress(reference_lengths))
-	
 	
 	# exporting
 	

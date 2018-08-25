@@ -65,7 +65,7 @@ More intuitively, you may want to check whether one feature is entirely to the l
 
 ### Progress calculation
 
-When you are iterating over a whole genome, you may wish to check how far you've gotten, e.g. to estimate remaining time until your script finishes running. `GenomeFeature.progress(reference_lengths)` calculates the proportion of the whole genome that lies before the given feature, if you give it a list of the lengths of all references. `GenomeFeature.progress_percent(reference_lengths)` helpfully rounds this to a percentage.
+When you are iterating over a whole genome, you may wish to check how far you've gotten, e.g. to estimate remaining time until your script finishes running. `GenomeFeature.progress(reference_lengths)` calculates the proportion of the whole genome that lies before the given feature, if you give it a list of the lengths of all references.
 
 ### Exporting
 
