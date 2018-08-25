@@ -222,7 +222,7 @@ class GenomeFeature (object):
 			if index.start is not None and index.stop is not None and index.stop <= index.start: raise IndexError
 			
 			new_left = (self.left_pos if index.start is None else self._compute_position(index.start))
-			new_right = (self.right_pos if index.stop is None else self._compute_position(index.stop))
+			new_right = (self.right_pos if index.stop is None else self._compute_position(index.stop) - (index.stop >= 0))
 			
 			return GenomeFeature(reference_id = self.reference_id, left_pos = new_left, right_pos = new_right, is_reverse = self.is_reverse, data = self.data)
 
@@ -233,8 +233,18 @@ class GenomeFeature (object):
 		'''
 		return a new instance containing the same data but only at the specified position (as a genome position)
 		'''
-		if not self.left_pos <= position <= self.right_pos: raise IndexError
-		return self[position - self.left_pos]
+		if isinstance(position, int):
+			if not self.left_pos <= position <= self.right_pos: raise IndexError
+			return self[position - self.left_pos]
+		elif isinstance(position, slice):
+			start = 0 if position.start is None else position.start - self.left_pos
+			if not 0 <= start < len(self): raise IndexError
+			stop = len(self) if position.stop is None else position.stop - self.left_pos
+			if not 0 < stop <= len(self): raise IndexError
+			return self[start:stop]
+		else:
+			raise TypeError
+
 	
 	def __iter__ (self):
 		'''
