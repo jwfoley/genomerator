@@ -37,7 +37,7 @@ Several alternative constructors exist for creating a `GenomeFeature` from certa
 
 `GenomeFeature.left()`, `.right()`, `.start()`, and `.end()` each return a new, complete `GenomeFeature` instance consisting only of the leftmost/rightmost/start/end position of the original instance, but containing the same data.
 
-`my_feature[index]` returns a new instance with the same data at the specified position, where `index` is relative to the left position of the original instance. For example, if `my_feature`'s left position is 2355 and right position is 2358, `my_feature[0]` returns a new instance with left 2355, right 2355; `my_feature[2]` is left 2357, right 2357. Reverse indexes and contiguous forward-oriented slices are also allowed: `my_feature[-1]` is left 2358, right 2358, and `my_feature[2:]` is left 2357, right 2358. `GenomeFeature.get_pos(position)` does the same thing but with a genome position rather than a relative offset index, e.g. `my_feature[2]` is the same as `my_feature.get_pos(2357)`.
+`my_feature[index]` returns a new instance with the same data at the specified position, where `index` is relative to the left position of the original instance. For example, if `my_feature`'s left position is 2355 and right position is 2358, `my_feature[0]` returns a new instance with left 2355, right 2355; `my_feature[2]` is left 2357, right 2357. Reverse indexes and contiguous forward-oriented slices are also allowed: `my_feature[-1]` is left 2358, right 2358, and `my_feature[2:]` is left 2357, right 2358. `GenomeFeature.get_pos(position)` does the same thing but with a genome position rather than a relative offset index, e.g. `my_feature[2]` is the same as `my_feature.get_pos(2357)`. But note that, consistent with Python syntax, the stop position of a slice is still one past the end of the desired section; so `my_feature.get_pos(2355:2359)` will return the entire feature, length 4.
 
 `len(my_feature)` returns the number of positions covered by a feature, e.g. `my_feature` has a length of 4. A single-position feature, e.g. left 2355 and right 2355, has a length of 1.
 
@@ -78,4 +78,17 @@ The `GenomeFeature` class contains a few methods to export an instance into a si
 `GenomeFeature.bedgraph(reference_names)` exports to the simpler UCSC bedGraph format, so it only needs the list of reference names. It assumes the feature's `data` attribute contains the numerical score for this genome region.
 
 
+## Specialized subclasses
+
+### `GenomeArray`
+
+This subclass stores position-specific data for a genome region. That is, its `data` attribute is an iterable containing some kind of data value for every position in the range. Thus `len(my_genomearray)` is always the same as `len(my_genomearray.data)`. Like `collections.defaultdict`, `GenomeArray` is instantiated with a special argument, `default_factory`, which is a function that creates the default data value for positions in the array. The default `default_factory` is `float`, which will create a data value of 0.0 for every position. You can change it to e.g. `list` or `dict` and then each position will have its own separate container for larger-scale data.
+
+`GenomeArray`'s methods for accessing individual positions within the region are similar to base `GenomeFeature`'s, except they return instances containing position-specific data. For example, if `my_genomearray` spans from left position 13 to right position 20, `my_genomearray.data` has length 8, and `my_genomearray[:3]` returns a new instance containing only positions 13 through 15 and the data values for only those first 3 positions. 
+
+Likewise the methods for changing coordinates also change the data. `shift_left`, `shift_right`, `shift_start`, and `shift_end` either delete data from the corresponding end of the array (if the shift shortens it) or add new values from the default factory (if lengthening it). `shift` and `shift_forward` remove from one end and add to the other, so the same data values will still correspond to the same positions. If you don't want to change the data while moving the array, `move(distance)` is like `shift(distance)` but keeps the data intact. 
+
+If you want to add specific data while changing the coordinates, the methods are analogous to `collections.deque`: `append(value)`, `extend(values)`, and `pop()` operate on the right end and `appendleft(value)`, `extendleft(values)`, and `popleft(values)` operate on the left end. There is even `rotate(steps = 1)`, which moves the array while simply rotating the contents of the data, so the values from the end that's being shortened are added to the end being lengthened. `reverse()` reverses the order of the data. `intersection(other)` returns only the data values from the intersection region.
+
+Because the data value is an iterable, you can use `count(value)` directly on the array to count the number of positions whose data is `value`.
 
