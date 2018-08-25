@@ -76,6 +76,7 @@ class GenomeFeature (object):
 	def from_bed (cls, line, reference_id, parse = True):
 		'''
 		make a GenomeFeature from a line of a BED file
+		https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 		you must give a reference_id because this format only has the name
 		parses the fields into self.data if parse = True
 		otherwise simply puts the unparsed, split strings into self.data (faster)
@@ -92,7 +93,7 @@ class GenomeFeature (object):
 				data['blockCount'] =   None if fields[9] == '.' else int(fields[9])
 				data['blockSizes'] =   None if fields[10] == '.' else list(int(x) for x in fields[10].split(','))
 				data['blockStarts'] =  None if fields[11] == '.' else list(int(x) for x in fields[11].split(','))
-			except IndexError:
+			except IndexError: # keep parsing until we run out of columns, then just stop with what we have
 				pass
 		else:
 			data = fields
@@ -108,6 +109,7 @@ class GenomeFeature (object):
 	def from_bedgraph (cls, line, reference_id):
 		'''
 		make a GenomeFeature from a line of a bedGraph file
+		https://genome.ucsc.edu/FAQ/FAQformat.html#format1.8
 		you must give a reference_id because this format only has the name
 		parses the dataValue into self.data
 		'''
@@ -123,6 +125,7 @@ class GenomeFeature (object):
 	def from_gff (cls, line, reference_id, parse = True):
 		'''
 		make a GenomeFeature from a line of a GFF file
+		https://genome.ucsc.edu/FAQ/FAQformat.html#format3
 		you must give a list of reference names, in order, so it can find the index
 		parses the fields into self.data if parse = True
 		otherwise simply puts the unparsed, split strings into self.data (faster)
