@@ -7,29 +7,29 @@ class RegionGenerator (object):
 	'''
 	
 	def __init__ (self,
-		references,
-		length =           1, # length of each region
+		reference_lengths, 
+		region_length =    1, # length of each region
 		overlap  =         False, # return consecutive overlapping regions offset by 1 base
 		include_partial =  True, # return shorter region at the end of the reference if not exactly divisible
 		default_factory =  int # function to create the default .data of each region
 	):
-		self.references = references
-		self.length = length
+		self.reference_lengths = reference_lengths
+		self.region_length = region_length
 		self.overlap = overlap
 		self.include_partial = include_partial
 		self.default_factory = default_factory
 		self._generator = self._yield_regions()
 	
 	def _yield_regions (self):
-		for reference_id, reference_length in zip(range(len(self.references)), self.references):
-			for left_pos in range(1, reference_length + 1, (1 if self.overlap else self.length)):
-				if left_pos + self.length - 1 > reference_length: # new feature would extend past end of reference
+		for reference_id, reference_length in zip(range(len(self.reference_lengths)), self.reference_lengths):
+			for left_pos in range(1, reference_length + 1, (1 if self.overlap else self.region_length)):
+				if left_pos + self.region_length - 1 > reference_length: # new feature would extend past end of reference
 					if self.include_partial:
 						right_pos = reference_length
 					else:
 						break
 				else:
-					right_pos = left_pos + self.length - 1
+					right_pos = left_pos + self.region_length - 1
 				yield GenomeFeature(
 					reference_id =  reference_id,
 					left_pos =      left_pos,
