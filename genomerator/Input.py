@@ -9,27 +9,23 @@ class FeatureStream (object):
 	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources
 	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature's alternative constructors
 	optionally replace the data with something user-specified instead
-	optionally filter the data to only return certain features
 	'''
 	
-	__slots__ = 'source', 'default_data', 'filter', 'verify_order', 'fixed_references', '_reference_lookup', '_feature_generator', '_previous_feature', 'count_pass', 'count_fail'
+	__slots__ = 'source', 'default_data', 'verify_sorted', 'fixed_references', '_reference_lookup', '_feature_generator', '_previous_feature', 'count'
 	
 	def __init__ (self,
 		source,
-		references =    None,
-		default_data =  None,
-		filter =        (lambda x: True),
-		verify_order =  False
+		references =     None,
+		default_data =   None,
+		verify_sorted =  False
 	):
 		assert isinstance(source, collections.Iterable)
 		self.source = source
-		self.filter = filter
 		self.default_data = default_data
-		self.verify_order = verify_order
+		self.verify_sorted = verify_sorted
 		self._previous_feature = None
-		self.count_pass = 0
-		self.count_fail = 0
-		self._feature_generator = self._filter_features()
+		self.count = 0
+		self._feature_generator = self._yield_features()
 		if references is None:
 			self.fixed_references = False
 			self._reference_lookup = collections.OrderedDict()
@@ -58,20 +54,9 @@ class FeatureStream (object):
 		'''
 		for feature in self.source: yield feature
 	
-	def _filter_features (self):
-		for feature in self._yield_features():
-			if not self.filter(feature):
-				self.count_fail += 1
-			else:
-				self.count_pass += 1
-				if self.default_data is None:
-					yield feature
-				else:
-					yield GenomeFeature.from_genomefeature(feature, self.default_data)
-	
 	def __next__ (self):
 		new_feature = next(self._feature_generator)
-		if self.verify_order and not (self._previous_feature is None or new_feature >= self._previous_feature): raise RuntimeError('input is not properly sorted in item %i' % self.count)
+		if self.verify_sorted and not (self._previous_feature is None or new_feature >= self._previous_feature): raise RuntimeError('input is not properly sorted in item %i' % self.count)
 		self._previous_feature = new_feature
 		return new_feature
 	
@@ -92,6 +77,10 @@ class SamStream (FeatureStream):
 	'''
 	
 	__slots__ = 'unaligned'
+	
+	def __init__ (self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.unaligned = 0
 	
 	def _yield_features (self):
 		for alignment in self.source:
@@ -271,7 +260,7 @@ class FastaStream (FeatureStream):
 	__slots__ = 'span', 'overlap', 'include_partial', '_sequence_buffer', '_left_pos', '_reference_id'
 	
 	def __init__ (self, *args, span = 1, overlap = False, include_partial = True, **kwargs):
-		super().__init__(*args, verify_order = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
+		super().__init__(*args, verify_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
 		assert isinstance(span, int) and span > 0
 		self.span = span
 		self.overlap = overlap
