@@ -308,27 +308,60 @@ class GenomeFeature (object):
 		if self.is_reverse:
 			self.shift(-distance)
 		else:
-			self.shift(distance)		
+			self.shift(distance)	
+
+	def switch_strand (self):
+		self.is_reverse = not self.is_reverse	
+
 	
-	def __add__ (self, distance):
-		'''
-		return a new instance with both coordinates shifted the specified distance
-		'''
+	# returning a copy with modified coordinates	
+	
+	def shifted_left (self, distance):
+		new_instance = copy.deepcopy(self)
+		new_instance.shift_left(distance)
+		return new_instance
+	
+	def shifted_right (self, distance):
+		new_instance = copy.deepcopy(self)
+		new_instance.shift_right(distance)
+		return new_instance
+	
+	def shifted (self, distance):
 		new_instance = copy.deepcopy(self)
 		new_instance.shift(distance)
 		return new_instance
+		
+	def shifted_start (self, distance):
+		new_instance = copy.deepcopy(self)
+		new_instance.shift_start(distance)
+		return new_instance
+		
+	def shifted_end (self, distance):
+		new_instance = copy.deepcopy(self)
+		new_instance.shift_end(distance)
+		return new_instance
+	
+	def shifted_forward (self, distance):
+		new_instance = copy.deepcopy(self)
+		new_instance.shift_forward(distance)
+		return new_instance
+	
+	def __add__ (self, distance):
+		'''
+		same as shifted
+		'''
+		return self.shifted(distance)
 
 	def __sub__ (self, distance):
 		'''
 		opposite of __add__
 		'''
-		self.__add__(-distance)
+		return self.__add__(-distance)
 	
-	def switch_strand (self):
-		'''
-		return a new instance with the opposite strandedness
-		'''
-		self.is_reverse = not self.is_reverse
+	def switched_strand (self):
+		new_instance = copy.deepcopy(self)
+		new_instance.switch_strand()
+		return new_instance
 		
 		
 	# comparisons
