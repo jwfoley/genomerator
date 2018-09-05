@@ -9,7 +9,7 @@ class Wiggler (object):
 	verify input is sorted *and* non-overlapping
 	'''
 	
-	__slots__ = 'span', 'definition', 'reference_id'
+	__slots__ = 'reference_names', 'span', 'definition', 'reference_id'
 	
 	def __init__ (self, reference_names, span = 1, definition = None):
 		self.reference_names = reference_names
@@ -36,6 +36,6 @@ class Wiggler (object):
 			if self.span != 1: result += ' span=%i' % self.span
 			result += '\n'
 			self.reference_id = feature.reference_id
-		result += '%i %s' % (feature.left_pos, feature.data)
+		result += '%i %s\n' % (feature.left_pos, feature.data)
 		
 		return result
