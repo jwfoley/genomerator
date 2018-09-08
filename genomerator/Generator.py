@@ -60,16 +60,16 @@ class OperationGenerator (object):
 		b, # iterable of GenomeFeature instances to use for modifying "a"
 		operate =                lambda a,b: a.__setattr__('data', a.data + 1), # function to apply to a matching feature from "a" given a new feature from "b"
 		match =                  lambda a,b: a.intersects(b), # function to check whether a feature from "a" matches a feature from "b"
-		check_a_passed =         lambda a,b: a.left_of(b), # function to check whether a feature from "a" is done being updated (e.g. we've completely passed it), given the latest feature from "b"
-		check_b_passed =         lambda a,b: a.right_of(b), # function to check whether a feature from "b" is done finding matches (e.g. we've completely passed it), given the latest feature from "a" 
+		a_is_passed =         lambda a,b: a.left_of(b), # function to check whether a feature from "a" is done being updated (e.g. we've completely passed it), given the latest feature from "b"
+		b_is_passed =         lambda a,b: a.right_of(b), # function to check whether a feature from "b" is done finding matches (e.g. we've completely passed it), given the latest feature from "a" 
 		stop_at_first_match =    False, # for each feature from "b", only perform the operation on a single feature from "a", then stop looking for more matches (don't double-count)
 	):
 		self.a = a
 		self.b = b
 		self.operate = operate
 		self.match = match
-		self.check_a_passed = check_a_passed
-		self.check_b_passed = check_b_passed
+		self.a_is_passed = a_is_passed
+		self.b_is_passed = b_is_passed
 		self.stop_at_first_match = stop_at_first_match
 		self.n_b_hits = 0
 		self._a_features = collections.deque()
@@ -78,17 +78,17 @@ class OperationGenerator (object):
 	def _yield_features (self):
 		for b_feature in self.b:
 			# first, yield any "a" features that are now done
-			while len(self._a_features) > 0 and self.check_a_passed(self._a_features[0], b_feature):
+			while len(self._a_features) > 0 and self.a_is_passed(self._a_features[0], b_feature):
 				yield self._a_features.popleft()
 			
 			# second, add all "a" features necessary to cover this "b" feature (plus one more)
-			if len(self._a_features) == 0 or not self.check_b_passed(self._a_features[-1], b_feature):
+			if len(self._a_features) == 0 or not self.b_is_passed(self._a_features[-1], b_feature):
 				for a_feature in self.a:
-					if self.check_a_passed(a_feature, b_feature): # don't bother with "a" features "b" has already passed
+					if self.a_is_passed(a_feature, b_feature): # don't bother with "a" features "b" has already passed
 						yield a_feature
 					else:
 						self._a_features.append(a_feature)
-						if self.check_b_passed(a_feature, b_feature): break
+						if self.b_is_passed(a_feature, b_feature): break
 			
 			# third, update the current "a" features according to this "b" feature
 			found_hit = False
@@ -97,7 +97,7 @@ class OperationGenerator (object):
 					self.operate(a_feature, b_feature)
 					found_hit = True
 					if self.stop_at_first_match: break # stop looking
-				elif self.check_b_passed(a_feature, b_feature): # we've already passed the "b" feature
+				elif self.b_is_passed(a_feature, b_feature): # we've already passed the "b" feature
 					break # so stop looking
 			self.n_b_hits += found_hit
 		
