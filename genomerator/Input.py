@@ -58,6 +58,7 @@ class FeatureStream (object):
 		new_feature = next(self._feature_generator)
 		if self.verify_sorted and not (self._previous_feature is None or new_feature >= self._previous_feature): raise RuntimeError('input is not properly sorted in item %i' % self.count)
 		self._previous_feature = new_feature
+		self.count += 1
 		return new_feature
 	
 	def __iter__ (self):
