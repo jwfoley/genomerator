@@ -71,6 +71,7 @@ class OperationGenerator (object):
 		self.check_a_passed = check_a_passed
 		self.check_b_passed = check_b_passed
 		self.stop_at_first_match = stop_at_first_match
+		self.n_b_hits = 0
 		self._a_features = collections.deque()
 		self._generator = self._yield_features()
 	
@@ -90,12 +91,15 @@ class OperationGenerator (object):
 						if self.check_b_passed(a_feature, b_feature): break
 			
 			# third, update the current "a" features according to this "b" feature
+			found_hit = False
 			for a_feature in self._a_features:
 				if self.match(a_feature, b_feature): # found a match
 					self.operate(a_feature, b_feature)
+					found_hit = True
 					if self.stop_at_first_match: break # stop looking
 				elif self.check_b_passed(a_feature, b_feature): # we've already passed the "b" feature
 					break # so stop looking
+			self.n_b_hits += found_hit
 		
 		# purge all remaining "a" features because there is no more "b"
 		for a_feature in self._a_features: yield a_feature
