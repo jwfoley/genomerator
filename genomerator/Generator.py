@@ -58,11 +58,11 @@ class OperationGenerator (object):
 	def __init__ (self,
 		a, # iterable of GenomeFeature instances to yield after modifying
 		b, # iterable of GenomeFeature instances to use for modifying "a"
-		operate =                lambda a,b: a.__setattr__('data', a.data + 1), # function to apply to a matching feature from "a" given a new feature from "b"
-		match =                  lambda a,b: a.intersects(b), # function to check whether a feature from "a" matches a feature from "b"
-		a_is_passed =         lambda a,b: a.left_of(b), # function to check whether a feature from "a" is done being updated (e.g. we've completely passed it), given the latest feature from "b"
-		b_is_passed =         lambda a,b: a.right_of(b), # function to check whether a feature from "b" is done finding matches (e.g. we've completely passed it), given the latest feature from "a" 
-		stop_at_first_match =    False, # for each feature from "b", only perform the operation on a single feature from "a", then stop looking for more matches (don't double-count)
+		operate =              lambda a,b: a.__setattr__('data', a.data + 1), # function to apply to a matching feature from "a" given a new feature from "b"
+		match =                lambda a,b: a.intersects(b), # function to check whether a feature from "a" matches a feature from "b"
+		a_is_passed =          lambda a,b: a.left_of(b), # function to check whether a feature from "a" is done being updated (e.g. we've completely passed it), given the latest feature from "b"
+		b_is_passed =          lambda a,b: a.right_of(b), # function to check whether a feature from "b" is done finding matches (e.g. we've completely passed it), given the latest feature from "a" 
+		stop_at_first_match =  False, # for each feature from "b", only perform the operation on a single feature from "a", then stop looking for more matches (don't double-count)
 	):
 		self.a = a
 		self.b = b
