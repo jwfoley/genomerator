@@ -1,3 +1,5 @@
+import copy
+
 class GenomeFeature (object):
 	'''
 	container for a generic genome feature with reference ID number (not name), left and right positions (1-based), strand (as 'is_reverse'), and embedded data of any kind
@@ -315,32 +317,32 @@ class GenomeFeature (object):
 	# returning a copy with modified coordinates	
 	
 	def shifted_left (self, distance):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.shift_left(distance)
 		return new_instance
 	
 	def shifted_right (self, distance):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.shift_right(distance)
 		return new_instance
 	
 	def shifted (self, distance):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.shift(distance)
 		return new_instance
 		
 	def shifted_start (self, distance):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.shift_start(distance)
 		return new_instance
 		
 	def shifted_end (self, distance):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.shift_end(distance)
 		return new_instance
 	
 	def shifted_forward (self, distance):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.shift_forward(distance)
 		return new_instance
 	
@@ -357,7 +359,7 @@ class GenomeFeature (object):
 		return self.__add__(-distance)
 	
 	def switched_strand (self):
-		new_instance = self
+		new_instance = copy.copy(self)
 		new_instance.switch_strand()
 		return new_instance
 		
