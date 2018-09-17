@@ -408,39 +408,58 @@ class GenomeFeature (object):
 	
 	
 	# distance comparisons
+	# these return infinity if features aren't on the same reference
+	# positive infinity if other feature is on a higher-number reference, negative infinity if on a lower-numbered one
 	
 	def left_offset (self, other):
 		'''
 		compute offset of other feature's left position relative to this feature's left position
 		sign of result corresponds to reference orientation
 		'''
-		assert other.reference_id == self.reference_id
-		return other.left_pos - self.left_pos
+		if other.reference_id > self.reference_id:
+			return float('inf')
+		elif other.reference_id < self.reference_id:
+			return float('-inf')
+		else:
+			return other.left_pos - self.left_pos
 
 	def right_offset (self, other):
 		'''
 		compute offset of other feature's right position relative to this feature's right position
 		sign of result corresponds to reference orientation
 		'''
-		assert other.reference_id == self.reference_id
-		return other.right_pos - self.right_pos
+		if other.reference_id > self.reference_id:
+			return float('inf')
+		elif other.reference_id < self.reference_id:
+			return float('-inf')
+		else:
+			return other.right_pos - self.right_pos
 	
 	def start_offset (self, other):
 		'''
 		compute offset of other feature's start position relative to this feature's start position
 		sign of result corresponds to this feature's orientation, not reference orientation
 		'''
-		assert other.reference_id == self.reference_id
-		return (self.start_pos - other.start_pos if self.is_reverse else other.start_pos - self.start_pos)
+		if other.reference_id > self.reference_id:
+			return float('inf')
+		elif other.reference_id < self.reference_id:
+			return float('-inf')
+		elif self.is_reverse:
+			return self.start_pos - other.start_pos
+		else:
+			return other.start_pos - self.start_pos
 	
 	def distance_to (self, other):
 		'''
 		compute offset of other feature's nearest position relative to this feature's nearest position
 		if they intersect, distance is zero
-		if other feature is left of this one, distance is negative
+		sign of result corresponds to reference orientation
 		'''
-		assert other.reference_id == self.reference_id
-		if self.intersects(other):
+		if other.reference_id > self.reference_id:
+			return float('inf')
+		elif other.reference_id < self.reference_id:
+			return float('-inf')
+		elif self.intersects(other):
 			return 0
 		elif other.left_of(self):
 			return other.right_pos - self.left_pos
