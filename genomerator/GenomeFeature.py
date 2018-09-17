@@ -364,7 +364,7 @@ class GenomeFeature (object):
 		return new_instance
 		
 		
-	# comparisons
+	# logical comparisons
 	
 	def __eq__ (self, other): # note right_pos is not checked (for sort order)
 		return self.reference_id == other.reference_id and self.left_pos == other.left_pos
@@ -405,6 +405,50 @@ class GenomeFeature (object):
 		test whether two features overlap
 		'''
 		return other.reference_id == self.reference_id and not (other.right_pos < self.left_pos or self.right_pos < other.left_pos)
+	
+	
+	# distance comparisons
+	
+	def left_offset (self, other):
+		'''
+		compute offset of other feature's left position relative to this feature's left position
+		sign of result corresponds to reference orientation
+		'''
+		assert other.reference_id == self.reference_id
+		return other.left_pos - self.left_pos
+
+	def right_offset (self, other):
+		'''
+		compute offset of other feature's right position relative to this feature's right position
+		sign of result corresponds to reference orientation
+		'''
+		assert other.reference_id == self.reference_id
+		return other.right_pos - self.right_pos
+	
+	def start_offset (self, other):
+		'''
+		compute offset of other feature's start position relative to this feature's start position
+		sign of result corresponds to this feature's orientation, not reference orientation
+		'''
+		assert other.reference_id == self.reference_id
+		return (self.start_pos - other.start_pos if self.is_reverse else other.start_pos - self.start_pos)
+	
+	def distance_to (self, other):
+		'''
+		compute offset of other feature's nearest position relative to this feature's nearest position
+		if they intersect, distance is zero
+		if other feature is left of this one, distance is negative
+		'''
+		assert other.reference_id == self.reference_id
+		if self.intersects(other):
+			return 0
+		elif other.left_of(self):
+			return other.right_pos - self.left_pos
+		else:
+			return other.left_pos - self.right_pos
+	
+	
+	# set-like operations
 	
 	def intersection (self, other):
 		'''
