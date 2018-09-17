@@ -466,6 +466,12 @@ class GenomeFeature (object):
 		else:
 			return other.left_pos - self.right_pos
 	
+	def __sub__(other, self):
+		'''
+		compute distance from one feature to another
+		'''
+		return self.distance_to(other)
+	
 	
 	# set-like operations
 	
