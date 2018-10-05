@@ -122,7 +122,7 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_gff (cls, line, reference_id, parse = True):
+	def from_gff (cls, line, reference_id, parse = True, version = 3):
 		'''
 		make a GenomeFeature from a line of a GFF file
 		https://genome.ucsc.edu/FAQ/FAQformat.html#format3
@@ -139,7 +139,16 @@ class GenomeFeature (object):
 				'phase':       None if fields[7] == '.' else int(fields[7])
 			}
 			for attribute in fields[8].split(';'):
-				tag, value = attribute.split('=')
+				if len(attribute) == 0: continue # some people leave trailing semicolons
+				if version == 2:
+					attribute = attribute.strip().rstrip() # possible leading/trailing spaces if there are spaces between items
+					first_space_pos = attribute.index(' ') # can't simply split because the value may also contain spaces
+					tag, value = attribute[:first_space_pos], attribute[first_space_pos + 1:]
+					if value.startswith('"') and value.endswith('"'): value = value[1:-1]
+				elif version == 3:
+					tag, value = attribute.split('=')
+				else:
+					raise RuntimeError('unknown GFF version %s' % str(version))
 				data[tag] = value
 		else:
 			data = fields
