@@ -231,12 +231,13 @@ class WiggleStream (FeatureStream):
 class GffStream (FeatureStream):
 	'''
 	given an iterable of GFF-format lines (e.g. an opened GFF file), yield GenomeFeatures
+	optionally specify types of allowed items (e.g. gene, exon) and ignore others
 	'''
-	__slots__ = 'parse', 'version'
+	__slots__ = 'parse', 'version', 'types'
 	
-	def __init__ (self, *args, parse = True, version = 3, **kwargs):
+	def __init__ (self, *args, parse = True, version = 3, types = None, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.parse, self.version = parse, version
+		self.parse, self.version, self.types = parse, version, types
 	
 	def _yield_features (self):
 		for line in self.source:
@@ -245,7 +246,8 @@ class GffStream (FeatureStream):
 			if len(line) == 0: continue
 			fields = line.split('\t')
 			if len(fields) < 8: raise RuntimeError('bad format:\n%s' % line)
-			yield GenomeFeature.from_gff(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse, version = self.version)
+			result = GenomeFeature.from_gff(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse, version = self.version)
+			if self.types is None or result.data['type'] in self.types: yield result
 
 
 class FastaStream (FeatureStream):
