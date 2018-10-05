@@ -1,6 +1,28 @@
 import collections
 from .GenomeFeature import GenomeFeature
 
+def read_references (reference_file):
+	'''
+	given a file containing reference names, in order, one per line, parse an ordered list of reference names
+	if the file contains additional fields delimited by tabs, they are ignored
+	'''
+	references = []
+	for line in reference_file:
+		fields = line.rstrip().split('\t')
+		if len(fields) >= 1: references.append(fields[0])
+	return references
+
+def read_reference_lengths (reference_file):
+	'''
+	given a file containing reference names and lengths, tab-delimited, one per line, parse an ordered dictionary of reference lengths
+	if the file contains additional fields also delimited by tabs, they are ignored
+	'''
+	reference_lengths = collections.OrderedDict()
+	for line in reference_file:
+		fields = line.rstrip().split('\t')
+		if len(fields) >= 2: reference_lengths[fields[0]] = int(fields[1])
+	return reference_lengths
+
 class FeatureStream (object):
 	'''
 	given an iterable of GenomeFeature instances, yield them back
