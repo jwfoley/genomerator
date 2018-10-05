@@ -8,13 +8,13 @@ except:
     long_description = None
 
 # Read version from package.
-from ionize.__version__ import __version__
+from genomerator.__version__ import __version__
 
-setup(name='ionize',
+setup(name='genomerator',
       version=__version__,
       author='Joseph W. Foley',
       author_email='jwfoley@gmail.com',
-      url="https://github.com/jwfoley/genomerator"
+      url="https://github.com/jwfoley/genomerator",
       classifiers=[
           "Programming Language :: Python",
           "Development Status :: 3 - Alpha",
