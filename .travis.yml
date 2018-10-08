@@ -1,6 +1,9 @@
 sudo: false
+addons:
+ apt:
+  sources:
+   - sourceline: 'ppa:deadsnakes/ppa'
 language: python
-dist: ubuntu-bionic
 python:
 - '3.4'
 - '3.5'
