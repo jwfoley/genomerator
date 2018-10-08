@@ -8,7 +8,7 @@ python:
 notifications:
   email: false
 before_install:
- - sudo add-apt-repository ppa:deadsnakes/ppa
+ - sudo add-apt-repository -y ppa:deadsnakes/ppa
  - sudo apt update
 install:
 - pip install coveralls
