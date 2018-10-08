@@ -1,5 +1,6 @@
-sudo: required
+sudo: false
 language: python
+dist: ubuntu-bionic
 python:
 - '3.4'
 - '3.5'
@@ -7,9 +8,6 @@ python:
 - '3.7'
 notifications:
   email: false
-before_install:
-- sudo apt-add-repository ppa:jonathonf/python-3.7
-- sudo apt update
 install:
 - pip install coveralls
 script:
