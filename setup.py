@@ -13,8 +13,8 @@ from genomerator.__version__ import __version__
 setup(name='genomerator',
       version=__version__,
       author='Joseph W. Foley',
-      author_email='jwfoley@gmail.com',
-      url="https://github.com/jwfoley/genomerator",
+      author_email='jwfoley+github@stanford.edu',
+      url='https://github.com/jwfoley/genomerator',
       classifiers=[
           "Programming Language :: Python",
           "Development Status :: 3 - Alpha",
