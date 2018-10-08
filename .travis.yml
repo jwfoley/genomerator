@@ -2,7 +2,7 @@ sudo: false
 addons:
  apt:
   sources:
-   - sourceline: 'ppa:deadsnakes/ppa'
+   - deadsnakes
 language: python
 python:
 - '3.4'
