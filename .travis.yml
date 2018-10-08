@@ -1,8 +1,4 @@
-sudo: false
-addons:
- apt:
-  sources:
-   - deadsnakes
+sudo: required
 language: python
 python:
 - '3.4'
@@ -11,6 +7,9 @@ python:
 - '3.7'
 notifications:
   email: false
+before_install:
+ - sudo add-apt-repository ppa:deadsnakes/ppa
+ - sudo apt update
 install:
 - pip install coveralls
 script:
