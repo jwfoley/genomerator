@@ -1,6 +1,6 @@
 sudo: false
 language: python
-dist: bionic
+dist: ubuntu-bionic
 python:
 - '3.4'
 - '3.5'
