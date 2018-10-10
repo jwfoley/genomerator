@@ -234,7 +234,7 @@ class WiggleStream (FeatureStream):
 					right_pos = left_pos + self._span - 1
 					value = float(fields[0])
 				else:
-					raise NotImplementedError('this should never happen')
+					raise RuntimeError('no valid wiggle format defined before data line: %s' % line)
 				self._count_since_header += 1
 				
 				# split the feature into single bases if necessary
