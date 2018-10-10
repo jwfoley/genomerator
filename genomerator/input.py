@@ -228,7 +228,7 @@ class WiggleStream (FeatureStream):
 					left_pos = int(fields[0])
 					right_pos = left_pos + self._span - 1
 					value = float(fields[1])
-				if self._format == 'fixedStep':
+				elif self._format == 'fixedStep':
 					if len(fields) != 1: raise RuntimeError('bad format:\n%s' % line)
 					left_pos = self._start + self._count_since_header * self._step
 					right_pos = left_pos + self._span - 1
