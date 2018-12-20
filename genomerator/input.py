@@ -271,6 +271,48 @@ class GffStream (FeatureStream):
 			result = GenomeFeature.from_gff(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse, version = self.version)
 			if self.types is None or result.data['type'] in self.types: yield result
 
+class GtfStream (FeatureStream):
+	'''
+	given an iterable of GTF-format lines (e.g. an opened GTF file), yield GenomeFeatures
+	but only one GenomeFeature will be yielded for each gene, and its self.data will include the child transcript features, each of which will include associated child features of other types (exon, CDS, etc.)
+	'''
+	__slots__ = '_gffstream'
+	
+	def __init__ (self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._gffstream = GffStream(*args, version = 2, **kwargs)	
+	
+	def _yield_features (self):
+		current_gene = None
+		
+		for feature in self._gffstream:
+			# new gene definition
+			if feature.data['type'] == 'gene':
+				if current_gene is not None: yield current_gene
+				current_gene = feature
+				current_gene.data['transcript'] = []
+				
+			# new child feature doesn't match current gene definition
+			elif current_gene is None or feature.data['gene_id'] != current_gene.data['gene_id']:
+				raise RuntimeError('%s of gene %s defined without the gene' % (feature.data['type'], feature.data['gene_id']))
+				
+			# new child transcript
+			elif feature.data['type'] == 'transcript':
+				current_gene.data['transcript'] += [feature]
+				
+			# new sub-transcript feature before its transcript definition
+			elif len(current_gene.data['transcript']) == 0 or feature.data['transcript_id'] != current_gene.data['transcript'][-1].data['transcript_id']:
+				raise RuntimeError('%s of transcript %s defined without the transcript' % (feature.data['type'], feature.data['transcript_id']))
+			
+			# new sub-transcript feature, first time we've seen one
+			elif feature.data['type'] not in current_gene.data['transcript'][-1].data:
+				current_gene.data['transcript'][-1].data[feature.data['type']] = [feature]
+			
+			# new sub-transcript feature of a type previously seen
+			else:
+				current_gene.data['transcript'][-1].data[feature.data['type']] += [feature]
+		
+		if current_gene is not None: yield current_gene
 
 class FastaStream (FeatureStream):
 	'''
