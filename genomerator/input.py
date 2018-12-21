@@ -280,7 +280,8 @@ class GtfStream (FeatureStream):
 	
 	def __init__ (self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self._gffstream = GffStream(*args, version = 2, **kwargs)	
+		kwargs['verify_sorted'] = False  # disable line-by-line sorting verification because subfeatures (e.g. exons) may be in contradictory order (e.g. because of multiple overlapping transcripts) even if the main features are properly sorted, which is still checked at their level (if requested)
+		self._gffstream = GffStream(*args, version = 2, **kwargs)
 	
 	def _yield_features (self):
 		current_gene = None
