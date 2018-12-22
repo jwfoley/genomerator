@@ -515,6 +515,31 @@ class GenomeFeature (object):
 				data =          self.data
 			)
 	
+	def space_between (self, other):
+		'''
+		return a GenomeFeature of the region between two GenomeFeatures
+		returns None if they are on different references or they have no gap between them
+		'''
+		if (
+			other.reference_id != self.reference_id or
+			self.intersects(other)
+		):
+			return None
+		else:
+			if self.left_of(other):
+				if self.right_pos + 1 == other.left_pos: return None
+				left_pos = self.right_pos + 1
+				right_pos = other.left_pos - 1
+			else:
+				if other.right_pos + 1 == self.left_pos: return None
+				left_pos = other.right_pos + 1
+				right_pos = self.left_pos - 1
+			return GenomeFeature (
+				reference_id =  self.reference_id,
+				left_pos =      left_pos,
+				right_pos =     right_pos,
+				data =          self.data
+			)
 	
 	# progress (proportion of genome traversed)
 	
