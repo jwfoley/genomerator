@@ -1,6 +1,36 @@
 import collections
 from .GenomeFeature import GenomeFeature
 
+class FeatureOverlapper (GenomeFeature):
+	'''
+	given a sorted iterable of GenomeFeatures, yield lists of overlapping consecutive groups
+	all features are returned in original order (singletons come in lists of length 1)
+	'''
+	__slots__ = 'source', '_buffer', '_generator'
+	
+	def __init__ (self, source):
+		self.source = source
+		self._buffer = []
+		self._generator = self._yield_groups()
+	
+	def _yield_groups (self):
+		for feature in self.source:
+			assert len(self._buffer) == 0 or feature >= self._buffer[-1]
+			if len(self._buffer) > 0 and self.intersects(feature): # new feature overlaps the ones in the buffer
+				self._buffer.append(feature)
+				self.right_pos = feature.right_pos
+			else:
+				if len(self._buffer) > 0: yield self._buffer
+				self._buffer = [feature]
+				self.reference_id, self.left_pos, self.right_pos = feature.reference_id, feature.left_pos, feature.right_pos
+		if len(self._buffer) > 0: yield self._buffer
+	
+	def __iter__ (self):
+		return self
+	
+	def __next__ (self):
+		return next(self._generator)
+
 class RegionGenerator (object):
 	'''
 	given a list of reference lengths, generates GenomeFeatures representing regions of a specified length
