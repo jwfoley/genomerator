@@ -271,22 +271,19 @@ class GffStream (FeatureStream):
 			result = GenomeFeature.from_gff(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse, version = self.version)
 			if self.types is None or result.data['type'] in self.types: yield result
 
-class GtfStream (FeatureStream):
+class GtfStream (GffStream):
 	'''
 	given an iterable of GTF-format lines (e.g. an opened GTF file), yield GenomeFeatures
 	but only one GenomeFeature will be yielded for each gene, and its self.data will include the child transcript features, each of which will include associated child features of other types (exon, CDS, etc.)
 	'''
-	__slots__ = '_gffstream'
 	
 	def __init__ (self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		kwargs['verify_sorted'] = False  # disable line-by-line sorting verification because subfeatures (e.g. exons) may be in contradictory order (e.g. because of multiple overlapping transcripts) even if the main features are properly sorted, which is still checked at their level (if requested)
-		self._gffstream = GffStream(*args, version = 2, **kwargs)
+		super().__init__(*args, version = 2, **kwargs) # GTF is formatted like GFF version 2
 	
 	def _yield_features (self):
 		current_gene = None
 		
-		for feature in self._gffstream:
+		for feature in super()._yield_features():
 			# new gene definition
 			if feature.data['type'] == 'gene':
 				if current_gene is not None: yield current_gene
