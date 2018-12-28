@@ -636,3 +636,13 @@ class GenomeFeature (object):
 		
 	def __repr__ (self):
 		return ('%s(reference_id = %i, left_pos = %i, right_pos = %i, is_reverse = %s, data = %s)' % (self.__class__.__name__, self.reference_id, self.left_pos, self.right_pos, self.is_reverse, self.data.__repr__()))
+	
+	def __str__ (self):
+		return ('%s(\n\
+	reference_id =  %i,\n\
+	left_pos =      %i,\n\
+	right_pos =     %i,\n\
+	is_reverse =    %s,\n\
+	data =          %s\n\
+)' % (self.__class__.__name__, self.reference_id, self.left_pos, self.right_pos, self.is_reverse, self.data.__str__()))
+
