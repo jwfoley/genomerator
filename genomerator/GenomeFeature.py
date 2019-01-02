@@ -415,6 +415,11 @@ class GenomeFeature (object):
 		'''
 		return other.reference_id == self.reference_id and not (other.right_pos < self.left_pos or self.right_pos < other.left_pos)
 	
+	def __contains__ (self, other):
+		'''
+		test whether the other feature is entirely contained within this one
+		'''
+		return other.reference_id == self.reference_id and other.left_pos >= self.left_pos and other.right_pos <= self.right_pos
 	
 	# distance comparisons
 	# these return infinity if features aren't on the same reference
