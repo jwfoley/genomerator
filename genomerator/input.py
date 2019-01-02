@@ -101,8 +101,9 @@ class SamStream (FeatureStream):
 	
 	__slots__ = 'unaligned'
 	
-	def __init__ (self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+	def __init__ (self, source, *args, references = None, **kwargs):
+		if references is not None: raise SyntaxWarning('references provided for %s are ignored' % self.__class__.__name__)
+		super().__init__(source, *args, references = source.references, **kwargs)
 		self.unaligned = 0
 	
 	def _yield_features (self):
@@ -110,10 +111,7 @@ class SamStream (FeatureStream):
 			if alignment.is_unmapped:
 				self.unaligned += 1
 			else:
-				if self.fixed_references and not alignment.reference_id == self._reference_lookup[alignment.reference_name]:
-					raise RuntimeError('wrong reference ID for alignment %s' % alignment.query_name)
-				else:
-					yield GenomeFeature.from_alignedsegment(alignment)
+				yield GenomeFeature.from_alignedsegment(alignment)
 
 
 class VariantStream (FeatureStream):
