@@ -26,25 +26,26 @@ def read_reference_lengths (reference_file):
 class FeatureStream (object):
 	'''
 	given an iterable of GenomeFeature instances, yield them back
-	but also verify correct sort order, if desired, and keep a count
+	but also verify correct sort order, if desired (as an assertion so you can disable it with -O)
+	keeps a count of features processed
 	you can provide a list of reference names, in order, or trust the data and learn automatically
 	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources
 	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature's alternative constructors
 	optionally replace the data with something user-specified instead
 	'''
 	
-	__slots__ = 'source', 'default_data', 'verify_sorted', 'fixed_references', '_reference_lookup', '_feature_generator', '_previous_feature', 'count'
+	__slots__ = 'source', 'default_data', 'assert_sorted', 'fixed_references', '_reference_lookup', '_feature_generator', '_previous_feature', 'count'
 	
 	def __init__ (self,
 		source,
 		references =     None,
 		default_data =   None,
-		verify_sorted =  False
+		assert_sorted =  False
 	):
 		assert isinstance(source, collections.Iterable)
 		self.source = source
 		self.default_data = default_data
-		self.verify_sorted = verify_sorted
+		self.assert_sorted = assert_sorted
 		self._previous_feature = None
 		self.count = 0
 		self._feature_generator = self._yield_features()
@@ -78,7 +79,7 @@ class FeatureStream (object):
 	
 	def __next__ (self):
 		new_feature = next(self._feature_generator)
-		if self.verify_sorted and not (self._previous_feature is None or new_feature >= self._previous_feature): raise RuntimeError('input is not properly sorted in item %i' % self.count)
+		assert not self.assert_sorted or self._previous_feature is None or new_feature >= self._previous_feature, ('input is not properly sorted in item %i' % self.count)
 		self._previous_feature = new_feature
 		self.count += 1
 		return new_feature
@@ -323,7 +324,7 @@ class FastaStream (FeatureStream):
 	__slots__ = 'span', 'overlap', 'include_partial', '_sequence_buffer', '_left_pos', '_reference_id'
 	
 	def __init__ (self, *args, span = 1, overlap = False, include_partial = True, **kwargs):
-		super().__init__(*args, verify_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
+		super().__init__(*args, assert_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
 		assert isinstance(span, int) and span > 0
 		self.span = span
 		self.overlap = overlap
