@@ -114,7 +114,7 @@ class OperationGenerator (object):
 			# second, add all "a" features necessary to cover this "b" feature (plus one more)
 			if len(self._a_features) == 0 or not self.b_is_passed(self._a_features[-1], b_feature):
 				for a_feature in self.a:
-					if self.a_is_passed(a_feature, b_feature): # don't bother with "a" features "b" has already passed
+					if len(self._a_features) == 0 and self.a_is_passed(a_feature, b_feature): # don't bother with "a" features "b" has already passed
 						yield a_feature
 					else:
 						self._a_features.append(a_feature)
