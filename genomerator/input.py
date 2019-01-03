@@ -103,9 +103,9 @@ class SamStream (FeatureStream):
 	
 	__slots__ = 'unaligned'
 	
-	def __init__ (self, source, *args, references = None, **kwargs):
+	def __init__ (self, source, references = None, *args, **kwargs):
 		if references is None: references = source.references
-		super().__init__(source, *args, references = references, **kwargs)
+		super().__init__(source, references = references, *args, **kwargs)
 		self.unaligned = 0
 	
 	def _yield_features (self):
