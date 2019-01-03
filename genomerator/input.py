@@ -98,13 +98,14 @@ class FeatureStream (object):
 class SamStream (FeatureStream):
 	'''
 	given an iterable of pysam.AlignedSegment instances (e.g. a pysam.Samfile), yield GenomeFeatures
+	expects a list of reference names in source.references unless it is provided separately
 	'''
 	
 	__slots__ = 'unaligned'
 	
 	def __init__ (self, source, *args, references = None, **kwargs):
-		if references is not None: raise SyntaxWarning('references provided for %s are ignored' % self.__class__.__name__)
-		super().__init__(source, *args, references = source.references, **kwargs)
+		if references is None: references = source.references
+		super().__init__(source, *args, references = references, **kwargs)
 		self.unaligned = 0
 	
 	def _yield_features (self):
@@ -112,6 +113,7 @@ class SamStream (FeatureStream):
 			if alignment.is_unmapped:
 				self.unaligned += 1
 			else:
+				assert 0 <= alignment.reference_id < len(self.references), 'reference_id out of range'
 				yield GenomeFeature.from_alignedsegment(alignment)
 
 
