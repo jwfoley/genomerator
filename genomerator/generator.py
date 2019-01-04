@@ -133,6 +133,7 @@ class OperationGenerator (object):
 		
 		# purge all remaining "a" features because there is no more "b"
 		while len(self._a_features) > 0: yield self._a_features.popleft()
+		for a_feature in self.a: yield a_feature
 	
 	def __iter__ (self):
 		return self
