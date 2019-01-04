@@ -515,32 +515,32 @@ class GenomeFeature (object):
 	
 	# set-like operations
 	
-	def intersection (self, other):
+	def intersection (self, *others):
 		'''
-		return a GenomeFeature of the overlap between two regions (preserves this one's data), or None if no overlap
+		return a GenomeFeature of the overlap between multiple regions (preserves this one's data), or None if no overlap
 		'''
-		if not self.intersects(other): return None
-		return GenomeFeature(
-			reference_id =  self.reference_id,
-			left_pos =      max(self.left_pos, other.left_pos),
-			right_pos =     min(self.right_pos, other.right_pos),
-			data =          self.data
-		)
+		result = copy.copy(self)
+		for other in others:
+			if not result.intersects(other): return None
+			result.left_pos = max(result.left_pos, other.left_pos)
+			result.right_pos = min(result.right_pos, other.right_pos)
+		return result
 	
-	def union (self, other):
+	def union (self, *others):
 		'''
-		return a GenomeFeature of the combined region spanned by two GenomeFeatures
+		return a GenomeFeature of the combined region spanned by multiple GenomeFeatures
 		returns None if they are on different references or there is a gap between them
 		'''
-		if abs(other - self) > 1:
-			return None
-		else:
-			return GenomeFeature (
-				reference_id =  self.reference_id,
-				left_pos =      min(self.left_pos, other.left_pos),
-				right_pos =     max(self.right_pos, other.right_pos),
-				data =          self.data
-			)
+		sorted_features = sorted([self] + list(others)) # this is necessary so it will work in any order, in case there's a middle region that connects two others but it's not invoked in that order
+		result = copy.copy(sorted_features[0])
+		for other in sorted_features[1:]:
+			if abs(other - result) > 1:
+				return None
+			else:
+				result.left_pos = min(self.left_pos, other.left_pos)
+				result.right_pos = max(self.right_pos, other.right_pos)
+		return result
+	
 	
 	# progress (proportion of genome traversed)
 	
