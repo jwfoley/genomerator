@@ -506,11 +506,7 @@ class GenomeFeature (object):
 		return a GenomeFeature of the combined region spanned by two GenomeFeatures
 		returns None if they are on different references or there is a gap between them
 		'''
-		if (
-			other.reference_id != self.reference_id or
-			other.right_of(self.shift_right(1)) or # shift to account for two features that don't overlap but have no gap between them
-			other.left_of(self.shift_left(-1))
-		):
+		if abs(other - self) > 1:
 			return None
 		else:
 			return GenomeFeature (
