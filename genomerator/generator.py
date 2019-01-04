@@ -132,7 +132,7 @@ class OperationGenerator (object):
 			self.n_b_hits += found_hit
 		
 		# purge all remaining "a" features because there is no more "b"
-		for a_feature in self._a_features: yield a_feature
+		while len(self._a_features) > 0: yield self._a_features.popleft()
 	
 	def __iter__ (self):
 		return self
