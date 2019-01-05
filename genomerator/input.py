@@ -297,7 +297,7 @@ class GtfStream (GffStream):
 				
 			# new child transcript
 			elif feature.data['type'] == 'transcript':
-				current_gene.data['transcript'] += [feature]
+				current_gene.data['transcript'].append(feature)
 				
 			# new sub-transcript feature before its transcript definition
 			elif len(current_gene.data['transcript']) == 0 or feature.data['transcript_id'] != current_gene.data['transcript'][-1].data['transcript_id']:
@@ -309,7 +309,7 @@ class GtfStream (GffStream):
 			
 			# new sub-transcript feature of a type previously seen
 			else:
-				current_gene.data['transcript'][-1].data[feature.data['type']] += [feature]
+				current_gene.data['transcript'][-1].data[feature.data['type']].append(feature)
 		
 		if current_gene is not None: yield current_gene
 

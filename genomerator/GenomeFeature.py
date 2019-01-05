@@ -531,7 +531,7 @@ class GenomeFeature (object):
 		return a GenomeFeature of the combined region spanned by multiple GenomeFeatures
 		returns None if they are on different references or there is a gap between them
 		'''
-		sorted_features = sorted([self] + list(others)) # this is necessary so it will work in any order, in case there's a middle region that connects two others but it's not invoked in that order
+		sorted_features = sorted((self, *others)) # this is necessary so it will work in any order, in case there's a middle region that connects two others but it's not invoked in that order
 		result = copy.copy(sorted_features[0])
 		for other in sorted_features[1:]:
 			if abs(other - result) > 1:
@@ -575,7 +575,7 @@ class GenomeFeature (object):
 		assert rgb is None or len(rgb) == 3
 		
 		# first make a complete entry
-		fields = [
+		fields = (
 			reference_names[self.reference_id],                                    # chrom
 			str(self.left_pos - 1),                                                # chromStart
 			str(self.right_pos),                                                   # chromEnd
@@ -588,7 +588,7 @@ class GenomeFeature (object):
 			str(block_count) if block_count is not None else '.',                  # blockCount
 			','.join(map(str, block_sizes)) if block_sizes is not None else '.',   # blockSizes
 			','.join(map(str, block_starts)) if block_starts is not None else '.'  # blockStarts
-		]
+		)
 		# now trim off the empty fields
 		final_length = len(fields)
 		for field in reversed(fields):
@@ -623,7 +623,7 @@ class GenomeFeature (object):
 		type is required by the GFF spec but other fields are optional
 		'''
 		assert type != 'CDS' or phase is not None # phase is required for all CDS features
-		return '\t'.join([
+		return '\t'.join((
 			reference_names[self.reference_id],                        # seqid
 			source if source is not None else '.',                     # source
 			type,                                                      # type
@@ -633,7 +633,7 @@ class GenomeFeature (object):
 			('-' if self.is_reverse else '+') if use_strand else '.',  # strand
 			str(phase) if phase is not None else '.',                  # phase
 			attributes if attributes is not None else '.'              # attributes
-		])
+		))
 		
 	def __repr__ (self):
 		return ('%s(reference_id = %i, left_pos = %i, right_pos = %i, is_reverse = %s, data = %s)' % (self.__class__.__name__, self.reference_id, self.left_pos, self.right_pos, self.is_reverse, self.data.__repr__()))

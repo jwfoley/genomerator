@@ -17,7 +17,7 @@ class GenomeArray (GenomeFeature):
 			assert len(self.data) == len(self)
 			self.data = collections.deque(self.data)
 		else:
-			self.data = collections.deque([self.default_factory() for i in range(len(self))])
+			self.data = collections.deque(tuple(self.default_factory() for i in range(len(self))))
 	
 	
 	# extracting positions
@@ -74,12 +74,12 @@ class GenomeArray (GenomeFeature):
 		if distance > 0:
 			for i in range(distance): self.data.popleft()
 		elif distance < 0:
-			self.data.extendleft([self.default_factory() for i in range(-distance)])
+			self.data.extendleft(tuple(self.default_factory() for i in range(-distance)))
 	
 	def shift_right (self, distance):
 		super().shift_right(distance)
 		if distance > 0:
-			self.data.extend([self.default_factory() for i in range(distance)])
+			self.data.extend(tuple(self.default_factory() for i in range(distance)))
 		elif distance < 0:
 			for i in range(-distance): self.data.pop()
 	
@@ -92,13 +92,13 @@ class GenomeArray (GenomeFeature):
 		'''
 		super().shift(distance)
 		if abs(distance) >= len(self): # in this case no original data will be preserved anyway
-			self.data = collections.deque([self.default_factory() for i in range(len(self))])
+			self.data = collections.deque(tuple(self.default_factory() for i in range(len(self))))
 		elif distance > 0: # moving right, so pop left first
 			for i in range(distance): self.data.popleft()
-			self.data.extend([self.default_factory() for i in range(distance)])
+			self.data.extend(tuple(self.default_factory() for i in range(distance)))
 		elif distance < 0: # moving left, so pop right first
 			for i in range(distance): self.data.pop()
-			self.data.extendleft([self.default_factory() for i in range(-distance)])
+			self.data.extendleft(tuple(self.default_factory() for i in range(-distance)))
 	
 	def move (self, distance):
 		'''
