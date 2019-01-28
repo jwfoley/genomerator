@@ -101,12 +101,14 @@ class OperationGenerator (object):
 		self.a_is_passed = a_is_passed
 		self.b_is_passed = b_is_passed
 		self.stop_at_first_match = stop_at_first_match
-		self.n_b_hits = 0
+		self.count_b_hits = self.count_a = self.count_b = 0
 		self._a_features = collections.deque()
 		self._generator = self._yield_features()
 	
 	def _yield_features (self):
 		for b_feature in self.b:
+			self.count_b += 1
+		
 			# first, yield any "a" features that are now done
 			while len(self._a_features) > 0 and self.a_is_passed(self._a_features[0], b_feature):
 				yield self._a_features.popleft()
@@ -114,6 +116,7 @@ class OperationGenerator (object):
 			# second, add all "a" features necessary to cover this "b" feature (plus one more)
 			if len(self._a_features) == 0 or not self.b_is_passed(self._a_features[-1], b_feature):
 				for a_feature in self.a:
+					self.count_a += 1
 					if len(self._a_features) == 0 and self.a_is_passed(a_feature, b_feature): # don't bother with "a" features "b" has already passed
 						yield a_feature
 					else:
@@ -129,11 +132,13 @@ class OperationGenerator (object):
 					if self.stop_at_first_match: break # stop looking
 				elif self.b_is_passed(a_feature, b_feature): # we've already passed the "b" feature
 					break # so stop looking
-			self.n_b_hits += found_hit
+			self.count_b_hits += found_hit
 		
 		# purge all remaining "a" features because there is no more "b"
 		while len(self._a_features) > 0: yield self._a_features.popleft()
-		for a_feature in self.a: yield a_feature
+		for a_feature in self.a:
+			self.count_a += 1
+			yield a_feature
 	
 	def __iter__ (self):
 		return self
