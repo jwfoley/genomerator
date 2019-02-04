@@ -134,11 +134,12 @@ class BedStream (FeatureStream):
 	'''
 	given an iterable of BED-format lines (e.g. an opened BED file), yield GenomeFeatures
 	'''
-	__slots__ = 'parse'
+	__slots__ = 'parse', 'count_discarded'
 	
 	def __init__ (self, *args, parse = True, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.parse = parse
+		self.count_discarded = 0
 	
 	def _yield_features (self):
 		for line in self.source:
@@ -147,7 +148,10 @@ class BedStream (FeatureStream):
 			if len(line) == 0: continue
 			fields = line.split()
 			if len(fields) < 3: raise RuntimeError('bad format:\n%s' % line)
-			yield GenomeFeature.from_bed(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse)
+			try:
+				yield GenomeFeature.from_bed(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse)
+			except KeyError:
+				self.count_discarded += 1
 
 
 class BedgraphStream (FeatureStream):
