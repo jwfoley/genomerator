@@ -317,6 +317,102 @@ class GtfStream (GffStream):
 		
 		if current_gene is not None: yield current_gene
 
+class FastaLineStream (FeatureStream):
+	'''
+	given an iterable of FASTA-format lines (e.g. an opened FASTA file), yield GenomeFeatures of the sequence lines
+	reference names are indexed in the order they appear, which means they're not all accessible until they're all read
+	optionally converts all bases to uppercase
+	'''
+	
+	__slots__ = 'upper', '_left_pos', '_reference_id'
+	
+	def __init__ (self, *args, upper = False, **kwargs):
+		super().__init__(*args, assert_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
+		self.upper = upper
+		self._left_pos = 1 # position of the leftmost base in the sequence buffer
+		self._feature_generator = self._yield_features()		
+	
+	def _yield_features (self):
+		for line in self.source:
+			if line.startswith('>'): # found a reference header			
+				self._reference_id = self._get_reference_id(line[1:].rstrip().strip())			
+				self._left_pos = 1
+			else: # sequence
+				seq = line.rstrip()
+				if self.upper: seq = seq.upper()
+				yield GenomeFeature (
+					reference_id =  self._reference_id,
+					left_pos =      self._left_pos,
+					right_pos =     self._left_pos + len(seq) - 1,
+					data =          seq
+				)
+				self._left_pos = self._left_pos + len(seq)
+
+class SequenceStream (FeatureStream):
+	'''
+	given an iterable of GenomeFeatures containing sequences (e.g. the yield of FastaLineStream), yield GenomeFeatures of the sequences in some contiguous chunk size
+	you can specify the span (number of bases per chunk), otherwise it returns one chunk per entire reference sequence
+	if span > 1, include_partial determines whether to return potentially shorter subsequences at the ends of contiguous inputs
+	if overlap = True, then returns overlapping sequences starting at each base position
+	'''
+	
+	__slots__ = 'span', 'overlap', 'include_partial', '_sequence_buffer', '_left_pos', '_reference_id'
+	
+	def __init__ (self, *args, span = None, overlap = False, include_partial = True, **kwargs):
+		if span is None:
+			assert not overlap and include_partial
+		else:
+			assert isinstance(span, int) and span > 0
+		super().__init__(*args, assert_sorted = False, **kwargs)
+		self.span = span
+		self.overlap = overlap
+		self.include_partial = include_partial
+		self._sequence_buffer = collections.deque()
+		self._reference_id = 0
+		self._left_pos = 0 # position of the leftmost base in the sequence buffer
+		self._feature_generator = self._yield_features()
+	
+	def _create_feature (self, length):
+		left_pos = self._left_pos
+		if self.overlap:
+			seq = ''.join([self._sequence_buffer.popleft()] + [self._sequence_buffer[i] for i in range(length - 1)])
+			self._left_pos += 1
+		else:
+			seq = ''.join(self._sequence_buffer.popleft() for i in range(length))
+			self._left_pos += length
+		return GenomeFeature (
+			reference_id =  self._reference_id,
+			left_pos =      left_pos,
+			right_pos =     left_pos + length - 1,
+			data =          seq
+		)
+	
+	def _purge_buffer (self):
+		if self.span is not None:
+			while len(self._sequence_buffer) >= self.span:
+				yield self._create_feature(self.span)
+		if len(self._sequence_buffer) > 0:
+			if self.include_partial:
+				yield self._create_feature(len(self._sequence_buffer))
+			else:
+				self._sequence_buffer.clear()			
+	
+	def _yield_features (self):
+		for line_feature in self.source:
+			if not (
+				line_feature.reference_id == self._reference_id and
+				line_feature.left_pos == self._left_pos + len(self._sequence_buffer)
+			): # new line not contiguous with previous ones
+				for feature in self._purge_buffer(): yield feature
+				self._reference_id = line_feature.reference_id
+				self._left_pos = line_feature.left_pos
+			self._sequence_buffer.extend(line_feature.data)
+			if self.span is not None:
+				while len(self._sequence_buffer) >= self.span:
+					yield self._create_feature(self.span)
+		
+		for feature in self._purge_buffer(): yield feature
+
 class FastaStream (FeatureStream):
 	'''
 	given an iterable of FASTA-format lines (e.g. an opened FASTA file), yield GenomeFeatures of the sequences
@@ -327,14 +423,15 @@ class FastaStream (FeatureStream):
 	handles buffering given the fact that FASTA is usually split across arbtirary line length
 	'''
 	
-	__slots__ = 'span', 'overlap', 'include_partial', '_sequence_buffer', '_left_pos', '_reference_id'
+	__slots__ = 'span', 'overlap', 'include_partial', 'upper', '_sequence_buffer', '_left_pos', '_reference_id'
 	
-	def __init__ (self, *args, span = 1, overlap = False, include_partial = True, **kwargs):
+	def __init__ (self, *args, span = 1, overlap = False, include_partial = True, upper = False, **kwargs):
 		super().__init__(*args, assert_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
 		assert isinstance(span, int) and span > 0
 		self.span = span
 		self.overlap = overlap
 		self.include_partial = include_partial
+		self.upper = upper
 		self._sequence_buffer = collections.deque()
 		self._left_pos = 1 # position of the leftmost base in the sequence buffer
 		self._feature_generator = self._yield_features()
@@ -370,7 +467,9 @@ class FastaStream (FeatureStream):
 				for feature in self._purge_buffer(): yield feature
 				self._reference_id = self._get_reference_id(line[1:].rstrip().strip())			
 			else: # more sequence
-				self._sequence_buffer.extend(line.rstrip())
+				new_seq = line.rstrip()
+				if self.upper: new_seq = new_seq.upper()
+				self._sequence_buffer.extend(new_seq)
 				while len(self._sequence_buffer) >= self.span:
 					yield self._create_feature(self.span)
 		
