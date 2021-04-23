@@ -322,20 +322,23 @@ class FastaLineStream (FeatureStream):
 	given an iterable of FASTA-format lines (e.g. an opened FASTA file), yield GenomeFeatures of the sequence lines
 	reference names are indexed in the order they appear, which means they're not all accessible until they're all read
 	optionally converts all bases to uppercase
+	optionally allows spaces in reference names (takes only the first word by default)
 	'''
 	
-	__slots__ = 'upper', '_left_pos', '_reference_id'
+	__slots__ = 'upper', 'allow_spaces', '_left_pos', '_reference_id'
 	
-	def __init__ (self, *args, upper = False, **kwargs):
+	def __init__ (self, *args, upper = False, allow_spaces = False, **kwargs):
 		super().__init__(*args, assert_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
 		self.upper = upper
+		self.allow_spaces = allow_spaces
 		self._left_pos = 1 # position of the leftmost base in the sequence buffer
-		self._feature_generator = self._yield_features()		
+		self._feature_generator = self._yield_features()
 	
 	def _yield_features (self):
 		for line in self.source:
-			if line.startswith('>'): # found a reference header			
-				self._reference_id = self._get_reference_id(line[1:].rstrip().strip())			
+			if line.startswith('>'): # found a reference header
+				reference_id_str = line[1:].rstrip().strip()
+				self._reference_id = self._get_reference_id(reference_id_str if self.allow_spaces else reference_id_str.split()[0])
 				self._left_pos = 1
 			else: # sequence
 				seq = line.rstrip()
@@ -423,15 +426,16 @@ class FastaStream (FeatureStream):
 	handles buffering given the fact that FASTA is usually split across arbtirary line length
 	'''
 	
-	__slots__ = 'span', 'overlap', 'include_partial', 'upper', '_sequence_buffer', '_left_pos', '_reference_id'
+	__slots__ = 'span', 'overlap', 'include_partial', 'upper', 'allow_spaces', '_sequence_buffer', '_left_pos', '_reference_id'
 	
-	def __init__ (self, *args, span = 1, overlap = False, include_partial = True, upper = False, **kwargs):
+	def __init__ (self, *args, span = 1, overlap = False, include_partial = True, upper = False, allow_spaces = False, **kwargs):
 		super().__init__(*args, assert_sorted = False, **kwargs) # nonsensical to verify sorting because we're defining the coordinates
 		assert isinstance(span, int) and span > 0
 		self.span = span
 		self.overlap = overlap
 		self.include_partial = include_partial
 		self.upper = upper
+		self.allow_spaces = allow_spaces
 		self._sequence_buffer = collections.deque()
 		self._left_pos = 1 # position of the leftmost base in the sequence buffer
 		self._feature_generator = self._yield_features()
@@ -463,9 +467,10 @@ class FastaStream (FeatureStream):
 	
 	def _yield_features (self):
 		for line in self.source:
-			if line.startswith('>'): # found a reference header			
+			if line.startswith('>'): # found a reference header
 				for feature in self._purge_buffer(): yield feature
-				self._reference_id = self._get_reference_id(line[1:].rstrip().strip())			
+				reference_id_str = line[1:].rstrip().strip()
+				self._reference_id = self._get_reference_id(reference_id_str if self.allow_spaces else reference_id_str.split()[0])
 			else: # more sequence
 				new_seq = line.rstrip()
 				if self.upper: new_seq = new_seq.upper()
