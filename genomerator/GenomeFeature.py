@@ -574,6 +574,16 @@ class GenomeFeature (object):
 		assert block_count is None or len(block_sizes) == len(block_starts) == block_count
 		assert rgb is None or len(rgb) == 3
 		
+		# import data
+		if type(self.data) is dict:
+			if name is None and 'name' in self.data: name = self.data['name']
+			if score is None and 'score' in self.data: score = self.data['score']
+			if thick_range is None and 'thickStart' in self.data and 'thickEnd' in self.data: thick_range = (self.data['thickStart'], self.data['thickEnd'])
+			if rgb is None and 'itemRgb' in self.data: rgb = self.data['itemRgb']
+			if block_count is None and 'blockCount' in self.data: block_count = self.data['blockCount']
+			if block_sizes is None and 'blockSizes' in self.data: block_sizes = self.data['blockSizes']
+			if block_starts is None and 'blockStarts' in self.data: block_starts = self.data['blockStarts']
+		
 		# first make a complete entry
 		fields = (
 			reference_names[self.reference_id],                                    # chrom
