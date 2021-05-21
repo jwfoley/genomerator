@@ -28,7 +28,7 @@ class Chunker:
 				yield self.chunk
 				self.chunk = self.chunk_type()
 			self.chunk.append(feature)
-		yield self.chunk
+		if len(self.chunk) > 0: yield self.chunk # could be empty if there was never a valid input
 		self.chunk = None
 	
 	def __iter__ (self):
