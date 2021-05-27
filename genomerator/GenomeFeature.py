@@ -160,6 +160,18 @@ class GenomeFeature (object):
 			data =          data
 		)
 	
+	def change_data (self, data = None):
+		'''
+		return a copy of the object with a different 'data' member
+		'''
+		return GenomeFeature(
+			reference_id = self.reference_id,
+			left_pos = self.left_pos,
+			right_pos = self.right_pos,
+			is_reverse = self.is_reverse,
+			data = data
+		)
+	
 	# accessing the attributes
 	
 	@property
@@ -202,7 +214,7 @@ class GenomeFeature (object):
 		'''
 		return the end position as a single coordinate
 		'''
-		return self.left_pos if self.is_reverse else self.right_pos	
+		return self.left_pos if self.is_reverse else self.right_pos
 	
 	def __len__ (self):
 		return self.right_pos - self.left_pos + 1
