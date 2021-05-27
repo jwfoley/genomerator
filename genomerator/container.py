@@ -29,9 +29,7 @@ class GenomeDict (dict):
 		'''
 		generator yielding each key, value pair as a GenomeFeature with the value as 'data'
 		'''
-		for feature, data in super().items():
-			feature.data = data
-			yield feature
+		return (feature.change_data(data) for feature, data in super().items())
 
 class GenomeArray (GenomeFeature):
 	'''
