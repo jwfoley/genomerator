@@ -1,6 +1,38 @@
 import collections
 from .GenomeFeature import GenomeFeature
 
+class GenomeDict (dict):
+	'''
+	dict wrapper in which each key is a GenomeFeature
+	values are taken from the 'data' member of the GenomeFeature instances added to the structure
+	'''
+	
+	def __init__ (self, *args):
+		'''
+		initializes the object with the provided GenomeFeatures as keys and their 'data' as values
+		'''
+		super().__init__((arg.change_data(), arg.data) for arg in args)
+	
+	def __setitem__ (self, feature, data):
+		'''
+		strips the 'data' from a GenomeFeature before using it as a key
+		'''
+		super().__setitem__(feature.change_data(), data)
+	
+	def add (self, feature):
+		'''
+		adds a GenomeFeature and its 'data' as a key, value pair
+		'''
+		self.__setitem__(feature, feature.data)
+	
+	def data_items (self):
+		'''
+		generator yielding each key, value pair as a GenomeFeature with the value as 'data'
+		'''
+		for feature, data in super().items():
+			feature.data = data
+			yield feature
+
 class GenomeArray (GenomeFeature):
 	'''
 	deque wrapper in which each element corresponds to a genome position
