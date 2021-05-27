@@ -207,6 +207,14 @@ class GenomeFeature (object):
 	def __len__ (self):
 		return self.right_pos - self.left_pos + 1
 	
+	def __hash__ (self):
+		'''
+		hash function, allowing the class to be used in a set or the keys of a dict
+		important: this considers the position and direction of the feature but ignores the 'data'
+		so two features with the same 'reference_id', 'left_pos', 'right_pos', and 'is_reverse' will have the same hash even if they contain different 'data'
+		warning: the hash will change if you change any of these members, which means it is not immutable in the lifetime of the object, so don't change those and expect anything hash-related to work properly!
+		'''
+		return hash((self.reference_id, self.left_pos, self.right_pos, self.is_reverse))
 
 	# extracting positions
 	
