@@ -1,22 +1,53 @@
 import copy
 
+def hash_whole (feature):
+	'''
+	hash the reference ID, orientation, both coordinates, and data
+	data must therefore be a hashable type
+	'''
+	return hash((feature.reference_id, feature.left_pos, feature.right_pos, feature.is_reverse, feature.data))
+
+def hash_coords (feature):
+	'''
+	hash the reference ID, orientation, and both coordinates
+	ignore the data
+	'''
+	return hash((feature.reference_id, feature.left_pos, feature.right_pos, feature.is_reverse))
+
+def hash_start (feature):
+	'''
+	hash only the start position and orientation
+	if orientation is forward, start position is left, otherwise right
+	'''
+	return hash((feature.reference_id, feature.left_pos, feature.is_reverse) if not feature.is_reverse else (feature.reference_id, feature.right_pos, feature.is_reverse))
+
+def hash_end (feature):
+	'''
+	hash only the end position and orientation
+	if orientation is forward, end position is right, otherwise left
+	'''
+	return hash((feature.reference_id, feature.right_pos, feature.is_reverse) if not feature.is_reverse else (feature.reference_id, feature.left_pos, feature.is_reverse))
+
+
 class GenomeFeature (object):
 	'''
 	container for a generic genome feature with reference ID number (not name), left and right positions (1-based), strand (as 'is_reverse'), and embedded data of any kind
 	if no right_pos is specified, it represents a single genome position (and right_pos = left_pos)
 	non-stranded features default to the forward strand (is_reverse = False)
+	this class can be hashed even though it is mutable (!) and the hash function is defined at instantiation time (!!)
 	'''
 	
-	__slots__ = 'reference_id', 'left_pos', 'right_pos', 'is_reverse', 'data'
+	__slots__ = 'reference_id', 'left_pos', 'right_pos', 'is_reverse', 'data', '__hash__'
 	
 	# constructors
 	
 	def __init__ (self,
-		reference_id,        # index number of the reference (chromosome), 0-based
-		left_pos,            # leftmost position, 1-based (!)
-		right_pos = None,    # rightmost position, 1-based
-		is_reverse = False,  # True if on reverse strand, False if forward strand or unstranded
-		data = None          # optional data (can be whatever object you want)
+		reference_id,               # index number of the reference (chromosome), 0-based
+		left_pos,                   # leftmost position, 1-based (!)
+		right_pos = None,           # rightmost position, 1-based
+		is_reverse = False,         # True if on reverse strand, False if forward strand or unstranded
+		data = None,                # optional data (can be any type including containers)
+		hash_function = hash_whole  # function to hash this instance (use at your own risk!)
 	):
 		assert isinstance(reference_id, int) and reference_id >= 0
 		assert isinstance(left_pos, int)
@@ -30,6 +61,7 @@ class GenomeFeature (object):
 			self.right_pos = right_pos
 		self.is_reverse = is_reverse
 		self.data = data
+		self.__hash__ = lambda: hash_function(self)
 	
 	@classmethod
 	def from_genomefeature (cls, other, data = None):
@@ -219,15 +251,6 @@ class GenomeFeature (object):
 	def __len__ (self):
 		return self.right_pos - self.left_pos + 1
 	
-	def __hash__ (self):
-		'''
-		hash function, allowing the class to be used in a set or the keys of a dict
-		important: this considers the position and direction of the feature but ignores the 'data'
-		so two features with the same 'reference_id', 'left_pos', 'right_pos', and 'is_reverse' will have the same hash even if they contain different 'data'
-		warning: the hash will change if you change any of these members, which means it is not immutable in the lifetime of the object, so don't change those and expect anything hash-related to work properly!
-		'''
-		return hash((self.reference_id, self.left_pos, self.right_pos, self.is_reverse))
-
 	# extracting positions
 	
 	def _compute_position (self, index):
