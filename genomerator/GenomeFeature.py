@@ -429,6 +429,26 @@ class GenomeFeature (object):
 		'''
 		return self.left == other.left and self.right == other.right and self.is_reverse == other.is_reverse
 	
+	def same_start (self, other):
+		'''
+		this feature has the same orientation and start position as the other
+		start position is left_pos for forward orientation, right_pos for reverse
+		'''
+		return self.is_reverse == other.is_reverse and (
+			(not self.is_reverse and self.left_pos == other.left_pos) or
+			(self.is_reverse and self.right_pos == other.right_pos)
+		)
+	
+	def same_end (self, other):
+		'''
+		this feature has the same orientation and end position as the other
+		end position is right_pos for forward orientation, left_pos for reverse
+		'''
+		return self.is_reverse == other.is_reverse and (
+			(not self.is_reverse and self.right_pos == other.right_pos) or
+			(self.is_reverse and self.left_pos == other.left_pos)
+		)
+	
 	def intersects (self, other):
 		'''
 		test whether two features overlap
