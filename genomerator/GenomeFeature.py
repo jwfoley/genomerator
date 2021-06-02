@@ -37,7 +37,7 @@ class GenomeFeature (object):
 	this class can be hashed even though it is mutable (!) and the hash function is defined at instantiation time (!!)
 	'''
 	
-	__slots__ = 'reference_id', 'left_pos', 'right_pos', 'is_reverse', 'data', '__hash__'
+	__slots__ = 'reference_id', 'left_pos', 'right_pos', 'is_reverse', 'data', 'hash_function'
 	
 	# constructors
 	
@@ -61,7 +61,7 @@ class GenomeFeature (object):
 			self.right_pos = right_pos
 		self.is_reverse = is_reverse
 		self.data = data
-		self.__hash__ = lambda: hash_function(self)
+		self.hash_function = hash_function
 	
 	@classmethod
 	def from_genomefeature (cls, other, data = None):
@@ -299,7 +299,12 @@ class GenomeFeature (object):
 			return self[start:stop]
 		else:
 			raise TypeError
-
+	
+	def __hash__ (self):
+		'''
+		simply calls the defined self.hash_function
+		'''
+		return self.hash_function(self)
 	
 	def __iter__ (self):
 		'''
