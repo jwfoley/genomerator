@@ -31,21 +31,23 @@ class FeatureStream (object):
 	you can provide a list of reference names, in order, or trust the data and learn automatically
 	warning: if you don't provide reference names, they'll be indexed in the order they appear, so if there are any references that have no entries in the data the indexes won't match other data sources
 	this uses a lookup dictionary of reference names instead of using list.index so in theory it will perform better than GenomeFeature's alternative constructors
-	optionally replace the data with something user-specified instead
+	optionally replace the data and hash function with something user-specified instead
 	'''
 	
-	__slots__ = 'source', 'default_data', 'assert_sorted', 'fixed_references', '_reference_lookup', '_feature_generator', '_previous_feature', 'count'
+	__slots__ = 'source', 'assert_sorted', 'default_data', 'hash_function', 'fixed_references', '_reference_lookup', '_feature_generator', '_previous_feature', 'count'
 	
 	def __init__ (self,
 		source,
 		references =     None,
+		assert_sorted =  False,
 		default_data =   'keep',
-		assert_sorted =  False
+		hash_function =  'keep'
 	):
 		assert isinstance(source, collections.Iterable)
 		self.source = source
-		self.default_data = default_data
 		self.assert_sorted = assert_sorted
+		self.default_data = default_data
+		self.hash_function = hash_function
 		self._previous_feature = None
 		self.count = 0
 		self._feature_generator = self._yield_features()
@@ -83,6 +85,7 @@ class FeatureStream (object):
 		self._previous_feature = new_feature
 		self.count += 1
 		if self.default_data != 'keep': new_feature.data = self.default_data
+		if self.hash_function != 'keep': new_feature.hash_function = self.hash_function
 		return new_feature
 	
 	def __iter__ (self):
