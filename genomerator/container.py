@@ -17,7 +17,7 @@ class GenomeDict (collections.OrderedDict):
 		'''
 		strips the 'data' from a GenomeFeature before using it as a key
 		'''
-		super().__setitem__(feature.change_data(), data)
+		super().__setitem__(feature, data)
 	
 	def add (self, feature):
 		'''
@@ -29,14 +29,15 @@ class GenomeDict (collections.OrderedDict):
 		'''
 		generator yielding each key, value pair as a GenomeFeature with the value as 'data'
 		'''
-		return (feature.change_data(data) for feature, data in super().items())
+		for feature, data in super().items()): yield (feature.change_data(data) 
 	
 	def pop_feature (self, last = True):
 		'''
 		pop a key, value pair off an end of the dictionary but return it as a single GenomeFeature with the value as "data"
 		'''
 		feature, data = self.popitem(last)
-		return feature.change_data(data)
+		feature.data = data
+		return feature
 
 class GenomeArray (GenomeFeature):
 	'''
