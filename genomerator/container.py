@@ -1,9 +1,9 @@
 import collections
 from .GenomeFeature import GenomeFeature
 
-class GenomeDict (dict):
+class GenomeDict (collections.OrderedDict):
 	'''
-	dict wrapper in which each key is a GenomeFeature
+	OrderedDict wrapper in which each key is a GenomeFeature
 	values are taken from the 'data' member of the GenomeFeature instances added to the structure
 	'''
 	
@@ -30,6 +30,13 @@ class GenomeDict (dict):
 		generator yielding each key, value pair as a GenomeFeature with the value as 'data'
 		'''
 		return (feature.change_data(data) for feature, data in super().items())
+	
+	def pop_feature (self, last = True):
+		'''
+		pop a key, value pair off an end of the dictionary but return it as a single GenomeFeature with the value as "data"
+		'''
+		feature, data = self.popitem(last)
+		return feature.change_data(data)
 
 class GenomeArray (GenomeFeature):
 	'''
