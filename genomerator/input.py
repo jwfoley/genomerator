@@ -39,7 +39,7 @@ class FeatureStream (object):
 	def __init__ (self,
 		source,
 		references =     None,
-		default_data =   None,
+		default_data =   'keep',
 		assert_sorted =  False
 	):
 		assert isinstance(source, collections.Iterable)
@@ -82,6 +82,7 @@ class FeatureStream (object):
 		assert not self.assert_sorted or self._previous_feature is None or new_feature >= self._previous_feature, ('input is not properly sorted in item %i' % self.count)
 		self._previous_feature = new_feature
 		self.count += 1
+		if self.default_data != 'keep': new_feature.data = self.default_data
 		return new_feature
 	
 	def __iter__ (self):
