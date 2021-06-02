@@ -13,7 +13,7 @@ class Chunker:
 	
 	def __init__ (self,
 		source, # iterable
-		break_test, # function of current chunk and new feature that returns True if it is time to yield the current chunk and begin a new one
+		break_test = lambda chunk, new_feature: new_feature.right_of(chunk[-1]), # function of current chunk and new feature that returns True if it is time to yield the current chunk and begin a new one
 		chunk_type = collections.deque # type to use for chunks
 	):
 		self.source = source
