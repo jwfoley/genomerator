@@ -1,5 +1,5 @@
 import collections
-from .GenomeFeature import GenomeFeature
+from .GenomeFeature import GenomeFeature, hash_coords
 
 class FeatureOverlapper (GenomeFeature):
 	'''
@@ -139,6 +139,78 @@ class OperationGenerator (object):
 		for a_feature in self.a:
 			self.count_a += 1
 			yield a_feature
+	
+	def __iter__ (self):
+		return self
+	
+	def __next__ (self):
+		return next(self._generator)
+
+
+class DictGenerator (object):
+	'''
+	for every query feature "b" in iterable "b_stream", perform some operation on a value for the corresponding key feature "a" in iterable "a_stream", then yield duples of each key feature "a" with its final value
+	e.g. "a_stream" might be a list of genome positions and "b_stream" might be a list of sequence reads, and then you count the number of reads starting at each position and yield that as the value
+	matching requires an exact match of the specified hash function, which is given to both "a" and "b" features
+	thus the "a" features must have unique hashes, but this class' safety check is not guaranteed to notice duplicates unless they get matches
+	this probably only makes sense if both iterables are sorted, but doesn't actually check
+	compare bedtools
+	'''
+	
+	def __init__ (self,
+		a_stream, # iterable of GenomeFeature instances to yield after modifying data
+		b_stream, # iterable of GenomeFeature instances to use for modifying data in "a"
+		default_value =  0, # default value for each "a" key
+		operate =        lambda a_value,b: a_value + 1, # function to generate updated data in "a" feature given a matching "b" feature
+		hash_function =  hash_coords, # hash function to check whether a "b" feature matches an "a" feature
+		a_is_passed =    lambda a,b: a.left_of(b), # function to check whether an "a" feature is done being updated (e.g. we've completely passed it), given the latest "b" feature
+		b_is_passed =    lambda a,b: a.right_of(b) # function to check a "b" feature is done looking for potential matches (e.g. we've completely passed it), given the latest "a" feature
+	):
+		self.a_stream = a_stream
+		self.b_stream = b_stream
+		self.default_value = default_value
+		self.operate = operate
+		self.hash_function = hash_function
+		self.a_is_passed = a_is_passed
+		self.b_is_passed = b_is_passed
+		self.count_b_hits = self.count_a = self.count_b = 0
+		self._a_dict = collections.OrderedDict()
+		self._generator = self._yield_features()
+	
+	def _yield_features (self):
+		for b in self.b_stream:
+			self.count_b += 1
+			b.hash_function = self.hash_function
+			
+			# first, yield any "a" features that are now done
+			while len(self._a_dict) > 0 and self.a_is_passed(list(self._a_dict.keys())[0], b):
+				yield self._pop_feature()
+			
+			# second, add all "a" features necessary to cover this "b" feature (plus one more)
+			if len(self._a_dict) == 0 or not self.b_is_passed(list(self._a_dict.keys())[-1], b):
+				for a in self.a_stream:
+					self.count_a += 1
+					a.hash_function = self.hash_function
+					assert a not in self._a_dict # there should never be duplicates, but this will only catch 
+					if len(self._a_dict) == 0 and self.a_is_passed(a, b): # don't bother with "a" features "b" has already
+						yield (a, self.default_value)
+					else:
+						self._a_dict[a] = self.default_value
+						if self.b_is_passed(a, b): break
+			
+			# third, update the current "a" features' values according to this "b" feature
+			try: # find a match for the "b" feature in the "a" dict
+				self._a_dict[b] = self.operate(self._a_dict[b], b)
+				self.count_b_hits += 1
+			except KeyError: # no match
+				pass
+		
+		# purge all remaining "a" features because there is no more "b"
+		while len(self._a_dict) > 0: yield self._a_dict.popitem(False)
+		for a in self.a_stream:
+			self.count_a += 1
+			a.hash_function = self.hash_function
+			yield (a, self.default_value)
 	
 	def __iter__ (self):
 		return self
