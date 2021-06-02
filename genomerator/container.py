@@ -29,7 +29,7 @@ class GenomeDict (collections.OrderedDict):
 		'''
 		generator yielding each key, value pair as a GenomeFeature with the value as 'data'
 		'''
-		for feature, data in super().items()): yield (feature.change_data(data) 
+		for feature, data in self.items(): yield feature.change_data(data)
 	
 	def pop_feature (self, last = True):
 		'''
