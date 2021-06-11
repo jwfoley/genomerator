@@ -18,6 +18,7 @@ def hash_start (feature):
 	'''
 	hash only the start position and orientation
 	if orientation is forward, start position is left, otherwise right
+	WARNING: this may not be useful because two GenomeFeatures with correctly matching __hash__ outputs can still disagree in __eq__ (tested by e.g. dict keys)!
 	'''
 	return hash((feature.reference_id, feature.left_pos, feature.is_reverse) if not feature.is_reverse else (feature.reference_id, feature.right_pos, feature.is_reverse))
 
@@ -25,6 +26,7 @@ def hash_end (feature):
 	'''
 	hash only the end position and orientation
 	if orientation is forward, end position is right, otherwise left
+	WARNING: this may not be useful because two GenomeFeatures with correctly matching __hash__ outputs can still disagree in __eq__ (tested by e.g. dict keys)!
 	'''
 	return hash((feature.reference_id, feature.right_pos, feature.is_reverse) if not feature.is_reverse else (feature.reference_id, feature.left_pos, feature.is_reverse))
 
