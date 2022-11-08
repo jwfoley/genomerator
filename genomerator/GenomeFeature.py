@@ -140,20 +140,30 @@ class GenomeFeature (object):
 		)
 	
 	@classmethod
-	def from_bedgraph (cls, line, reference_id):
+	def from_bedgraph (cls, line, reference_id, parse = True):
 		'''
 		make a GenomeFeature from a line of a bedGraph file
 		https://genome.ucsc.edu/FAQ/FAQformat.html#format1.8
 		you must give a reference_id because this format only has the name
-		parses the dataValue into self.data
+		parses the dataValue into self.data (float) if parse = True
+		otherwise dataValue is a list of all data field(s) as strings
+		(allows bedGraphs with multiple data fields)
 		'''
 		fields = line.rstrip().split()
-		return cls(
-			reference_id =  reference_id,
-			left_pos =      int(fields[1]) + 1,
-			right_pos =     int(fields[2]),
-			data =          float(fields[3])
-		)
+		if parse:
+			return cls(
+				reference_id =  reference_id,
+				left_pos =      int(fields[1]) + 1,
+				right_pos =     int(fields[2]),
+				data =          float(fields[3])
+			)
+		else:
+				return cls(
+				reference_id =  reference_id,
+				left_pos =      int(fields[1]) + 1,
+				right_pos =     int(fields[2]),
+				data =          fields[3:]
+			)
 	
 	@classmethod
 	def from_gff (cls, line, reference_id, parse = True, version = 3):

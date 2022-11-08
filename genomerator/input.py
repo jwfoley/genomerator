@@ -165,10 +165,11 @@ class BedgraphStream (FeatureStream):
 	yields each genome position separately, even if file represents continguous runs, unless you specify split_spans = False
 	'''
 	
-	__slots__ = 'split_spans'
+	__slots__ = 'parse', 'split_spans'
 	
-	def __init__ (self, *args, split_spans = True, **kwargs):
+	def __init__ (self, *args, parse = True, split_spans = True, **kwargs):
 		super().__init__(*args, **kwargs)
+		self.parse = parse
 		self.split_spans = split_spans
 	
 	def _yield_features (self):
@@ -177,8 +178,8 @@ class BedgraphStream (FeatureStream):
 			line = line.rstrip()
 			if len(line) == 0: continue
 			fields = line.split()
-			if len(fields) != 4: raise RuntimeError('bad format:\n%s' % line)
-			full_feature = GenomeFeature.from_bedgraph(line = line, reference_id = self._get_reference_id(fields[0]))
+			if len(fields) < 4: raise RuntimeError('bad format:\n%s' % line)
+			full_feature = GenomeFeature.from_bedgraph(line = line, reference_id = self._get_reference_id(fields[0]), parse = self.parse)
 			if self.split_spans:
 				for position_feature in full_feature: yield position_feature
 			else:
