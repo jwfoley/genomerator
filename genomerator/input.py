@@ -1,4 +1,5 @@
 import collections
+from collections.abc import Iterable
 from .GenomeFeature import GenomeFeature
 
 def read_references (reference_file):
@@ -43,7 +44,7 @@ class FeatureStream (object):
 		default_data =   'keep',
 		hash_function =  'keep'
 	):
-		assert isinstance(source, collections.Iterable)
+		assert isinstance(source, Iterable)
 		self.source = source
 		self.assert_sorted = assert_sorted
 		self.default_data = default_data
