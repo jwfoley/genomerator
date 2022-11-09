@@ -102,7 +102,8 @@ class FeatureStream (object):
 
 class SamStream (FeatureStream):
 	'''
-	given an iterable of pysam.AlignedSegment instances (e.g. a pysam.Samfile), yield GenomeFeatures
+	given an iterable of pysam.AlignedSegment instances (e.g. a pysam.Samfile),
+	yield a GenomeFeature for each alignment
 	expects a list of reference names in source.references unless it is provided separately
 	'''
 	
@@ -121,6 +122,40 @@ class SamStream (FeatureStream):
 				assert 0 <= alignment.reference_id < len(self.references), 'reference_id out of range'
 				yield GenomeFeature.from_alignedsegment(alignment)
 
+class SamFragmentStream (FeatureStream):
+	'''
+	given an iterable of pysam.AlignedSegment instances (e.g. a pysam.Samfile) from paired-end reads,
+	yield a GenomeFeature for each genome fragment inferred from a pair of reads
+	only pairs with both reads aligned to the same reference are used (interchromosomal fusions are excluded)
+	only the left-side read of each pair is examined (and put into the FeatureStream.data member);
+	the right-side read is simply assumed to be present and concordant (!)
+	this could be a problem if you are filtering reads by e.g. MAPQ and only one read passes the threshold:
+	if it's the left read you get the fragment, if not it's lost!
+	expects a list of reference names in source.references unless it is provided separately
+	'''
+	
+	def __init__ (self, source, references = None, *args, **kwargs):
+		if references is None: references = source.references
+		super().__init__(source, references = references, *args, **kwargs)
+	
+	def _yield_features (self):
+		for alignment in self.source:
+			if (
+				(not (alignment.is_paired and alignment.is_proper_pair)) or # proper pairs required
+				(alignment.is_unmapped or alignment.mate_is_unmapped) or # both alignments must be mapped
+				(alignment.reference_id != alignment.next_reference_id) or # must be mapped to same reference_id
+				(not (alignment.is_forward and alignment.mate_is_reverse)) # must be the left alignment of an inward-pointing pair
+			):
+				continue
+			else:
+				assert 0 <= alignment.reference_id < len(self.references), 'reference_id out of range'
+				yield GenomeFeature(
+					reference_id =  alignment.reference_id,
+					left_pos =      alignment.reference_start + 1,
+					right_pos =     alignment.reference_start + abs(alignment.template_length), # template_length should always be positive if the read is selected correctly but don't assume
+					is_reverse =    alignment.is_read2, # fragment has same orientation as pair's read1
+					data = alignment
+				)
 
 class VariantStream (FeatureStream):
 	'''
